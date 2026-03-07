@@ -14,22 +14,19 @@
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
         :root{
             --blue:#4fc3f7;--pink:#f48fb1;--green:#a5d6a7;
-            --bg:#080c18;--panel:rgba(8,12,28,0.88);--border:rgba(79,195,247,0.15);
+            --bg:#080c18;--panel:rgba(8,12,28,0.9);--border:rgba(79,195,247,0.15);
         }
         body{background:var(--bg);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;touch-action:none}
         video{display:none}
 
-        #cv-draw{position:absolute;inset:0;width:100%;height:100%;z-index:1;transform:scaleX(-1)}
+        /* Overlay canvas aynalı, draw canvas normal (koordinatlar zaten düzeltildi) */
+        #cv-draw{position:absolute;inset:0;width:100%;height:100%;z-index:1}
         #cv-over{position:absolute;inset:0;width:100%;height:100%;z-index:2;transform:scaleX(-1)}
 
-        #splash{
-            position:fixed;inset:0;z-index:999;background:var(--bg);
-            display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
-            transition:opacity 0.4s
-        }
+        #splash{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity 0.4s}
         #splash.done{opacity:0;pointer-events:none}
         #splash-title{font-size:clamp(18px,5vw,26px);font-weight:700;color:var(--blue);letter-spacing:5px;text-transform:uppercase}
-        #splash-sub{color:rgba(255,255,255,0.35);font-size:13px}
+        #splash-sub{color:rgba(255,255,255,0.35);font-size:13px;text-align:center;padding:0 20px}
         .ring{width:44px;height:44px;border:3px solid rgba(79,195,247,0.1);border-top-color:var(--blue);border-radius:50%;animation:spin .85s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -47,9 +44,9 @@
         #hud-bot{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--panel);border-top:1px solid var(--border);padding:8px 12px 10px;display:flex;flex-direction:column;gap:7px}
         #gcards{display:flex;gap:6px}
         .gc{flex:1;border-radius:9px;padding:7px 8px;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background .2s,border-color .2s}
-        .gc.adraw{background:rgba(79,195,247,0.07);border-color:rgba(79,195,247,0.3)}
-        .gc.aerase{background:rgba(244,143,177,0.07);border-color:rgba(244,143,177,0.3)}
-        .gc.actrl{background:rgba(165,214,167,0.07);border-color:rgba(165,214,167,0.3)}
+        .gc.adraw{background:rgba(79,195,247,0.1);border-color:rgba(79,195,247,0.4)}
+        .gc.aerase{background:rgba(244,143,177,0.1);border-color:rgba(244,143,177,0.4)}
+        .gc.actrl{background:rgba(165,214,167,0.1);border-color:rgba(165,214,167,0.4)}
         .gi{font-size:18px;line-height:1}
         .ginfo{flex:1;min-width:0}
         .gt{font-size:9px;font-weight:700;letter-spacing:.3px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -60,7 +57,7 @@
         .gc.actrl .gs{background:var(--green);box-shadow:0 0 5px var(--green)}
 
         #crow{display:flex;align-items:center;gap:5px}
-        .sw{width:20px;height:20px;border-radius:50%;flex-shrink:0;border:2px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s}
+        .sw{width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s}
         .sw.picked{border-color:#fff;transform:scale(1.28);box-shadow:0 0 7px currentColor}
         #bbar{flex:1;display:flex;align-items:center;gap:6px}
         #blbl{font-size:8px;color:rgba(255,255,255,0.25);letter-spacing:1px;white-space:nowrap}
@@ -68,15 +65,18 @@
         #bfill{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:2px;transition:width .15s}
 
         #notif{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:20;pointer-events:none}
-        .nm{background:rgba(8,12,28,0.92);border:1px solid rgba(79,195,247,0.22);border-radius:7px;padding:5px 14px;color:var(--blue);font-size:11px;font-weight:600;white-space:nowrap;margin-bottom:4px;animation:nfIn .18s ease,nfOut .2s 1.4s forwards}
+        .nm{background:rgba(8,12,28,0.95);border:1px solid rgba(79,195,247,0.3);border-radius:7px;padding:6px 16px;color:var(--blue);font-size:12px;font-weight:600;white-space:nowrap;margin-bottom:4px;animation:nfIn .18s ease,nfOut .2s 1.6s forwards}
         @keyframes nfIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes nfOut{to{opacity:0;transform:translateY(-6px)}}
 
-        #ship{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none;opacity:0;transition:opacity .25s;background:rgba(8,12,28,0.9);border:1px solid var(--border);border-radius:12px;padding:12px 20px;display:flex;flex-direction:column;align-items:center;gap:4px}
+        #ship{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none;opacity:0;transition:opacity .25s;background:rgba(8,12,28,0.9);border:1px solid var(--border);border-radius:12px;padding:14px 24px;display:flex;flex-direction:column;align-items:center;gap:4px}
         #ship.show{opacity:1}
-        #sarr{font-size:28px;animation:pulse .55s ease infinite alternate}
+        #sarr{font-size:32px;animation:pulse .55s ease infinite alternate}
         @keyframes pulse{from{opacity:.4}to{opacity:1}}
-        #stxt{font-size:11px;color:var(--green);font-weight:700;letter-spacing:1px}
+        #stxt{font-size:12px;color:var(--green);font-weight:700;letter-spacing:1px}
+
+        /* Debug panel — geliştirme sırasında el durumunu gösterir */
+        #dbg{position:fixed;top:56px;right:8px;z-index:10;background:rgba(0,0,0,0.6);color:rgba(255,255,255,0.5);font-size:9px;padding:4px 8px;border-radius:5px;pointer-events:none;line-height:1.6}
     </style>
 </head>
 <body>
@@ -100,9 +100,21 @@
 
 <div id="hud-bot">
     <div id="gcards">
-        <div class="gc" id="gc-draw"><div class="gi">✊</div><div class="ginfo"><div class="gt">ÇİZ</div><div class="gd">Sağ el yumruk</div></div><div class="gs"></div></div>
-        <div class="gc" id="gc-erase"><div class="gi">🖐</div><div class="ginfo"><div class="gt">SİLGİ</div><div class="gd">Yumruk + silgi mod</div></div><div class="gs"></div></div>
-        <div class="gc" id="gc-ctrl"><div class="gi">👈</div><div class="ginfo"><div class="gt">KONTROL</div><div class="gd" id="cdesc">Sol el → kaydır</div></div><div class="gs"></div></div>
+        <div class="gc" id="gc-draw">
+            <div class="gi">✊</div>
+            <div class="ginfo"><div class="gt">ÇİZ</div><div class="gd">Sağ el yumruk</div></div>
+            <div class="gs"></div>
+        </div>
+        <div class="gc" id="gc-erase">
+            <div class="gi">🖐</div>
+            <div class="ginfo"><div class="gt">SİLGİ</div><div class="gd">Yumruk + silgi mod</div></div>
+            <div class="gs"></div>
+        </div>
+        <div class="gc" id="gc-ctrl">
+            <div class="gi">👈</div>
+            <div class="ginfo"><div class="gt">KONTROL</div><div class="gd" id="cdesc">Sol el → kaydır</div></div>
+            <div class="gs"></div>
+        </div>
     </div>
     <div id="crow">
         <div class="sw picked" data-c="#4fc3f7" style="background:#4fc3f7"></div>
@@ -114,14 +126,19 @@
         <div class="sw" data-c="#ce93d8" style="background:#ce93d8"></div>
         <div class="sw" data-c="#80cbc4" style="background:#80cbc4"></div>
         <div class="sw" data-c="#ffcc80" style="background:#ffcc80"></div>
-        <div id="bbar"><span id="blbl">FIRÇA</span><div id="btrack"><div id="bfill" style="width:20%"></div></div></div>
+        <div id="bbar">
+            <span id="blbl">FIRÇA</span>
+            <div id="btrack"><div id="bfill" style="width:20%"></div></div>
+        </div>
     </div>
 </div>
 
 <div id="notif"></div>
 <div id="ship"><div id="sarr">←</div><div id="stxt">SİLGİ MODU</div></div>
+<div id="dbg">—</div>
 
 <script>
+// ── DOM ──
 var webcam  = document.getElementById('webcam');
 var cvDraw  = document.getElementById('cv-draw');
 var cvOver  = document.getElementById('cv-over');
@@ -141,8 +158,9 @@ var cdesc   = document.getElementById('cdesc');
 var ship    = document.getElementById('ship');
 var sarr    = document.getElementById('sarr');
 var stxt    = document.getElementById('stxt');
+var dbg     = document.getElementById('dbg');
 
-// STATE
+// ── STATE ──
 var paths      = [];
 var activePath = null;
 var redoPool   = [];
@@ -150,16 +168,24 @@ var eraserOn   = false;
 var inkColor   = '#4fc3f7';
 var inkSize    = 5;
 var launched   = false;
+
+// Cursor (draw canvas koordinatları — aynasız)
 var curCx = null, curCy = null;
+
+// Swipe
 var leftXHist   = [];
 var lastSwipeMs = 0;
 var swipeTimer  = null;
-var lastHudMs   = 0;
+
+// HUD throttle
+var lastHudMs = 0;
+
+// Canvas boyutu cache
 var cvW = 0, cvH = 0;
 var drawDirty = false;
-var ERASE_R = 38;
+var ERASE_R = 40;
 
-// Canvas resize (yalnızca gerekince)
+// ── CANVAS BOYUT ──
 function ensureSize() {
     var w = window.innerWidth, h = window.innerHeight;
     if (w === cvW && h === cvH) return;
@@ -169,24 +195,24 @@ function ensureSize() {
     drawDirty = true;
 }
 
-// Notify
+// ── NOTIFY ──
 function notify(txt) {
     var el = document.createElement('div');
     el.className = 'nm'; el.textContent = txt;
     notifEl.appendChild(el);
-    setTimeout(function(){ if(el.parentNode) el.remove(); }, 1800);
+    setTimeout(function(){ if(el.parentNode) el.remove(); }, 2000);
 }
 
-// Swipe hint
+// ── SWIPE HİNT ──
 function swipeHint(toEraser) {
     sarr.textContent = toEraser ? '→' : '←';
     stxt.textContent = toEraser ? 'SİLGİ MODU' : 'KALEM MODU';
     ship.classList.add('show');
     if(swipeTimer) clearTimeout(swipeTimer);
-    swipeTimer = setTimeout(function(){ ship.classList.remove('show'); }, 1100);
+    swipeTimer = setTimeout(function(){ ship.classList.remove('show'); }, 1200);
 }
 
-// Color swatches
+// ── RENK ──
 var swatches = document.querySelectorAll('.sw');
 function pickColor(c) {
     inkColor = c;
@@ -196,7 +222,7 @@ swatches.forEach(function(s){
     s.addEventListener('pointerdown', function(e){ e.preventDefault(); pickColor(s.getAttribute('data-c')); });
 });
 
-// HUD — max 10fps DOM güncelle
+// ── HUD (max 10fps) ──
 function hudUpdate(detected, drawing, erasing) {
     var now = Date.now();
     if (now - lastHudMs < 100) return;
@@ -219,22 +245,36 @@ function hudUpdate(detected, drawing, erasing) {
     }
 }
 
-// Yumruk tespiti — sade, hızlı
+// ── YUMRUK TESPİTİ ──
+// Parmak uçlarını (tip) ikinci eklemdeki (pip) y ile karşılaştır.
+// Yumrukta tip > pip (daha aşağıda). 4 parmaktan 3'ü yeterliyse yumruk.
 function isFist(m) {
-    return (m[8].y > m[6].y) && (m[12].y > m[10].y) && (m[16].y > m[14].y) && (m[20].y > m[18].y);
+    var curled = 0;
+    // index=8/6, middle=12/10, ring=16/14, pinky=20/18
+    if (m[8].y  > m[6].y)  curled++;
+    if (m[12].y > m[10].y) curled++;
+    if (m[16].y > m[14].y) curled++;
+    if (m[20].y > m[18].y) curled++;
+    return curled >= 3;
 }
 
-// Tüm pathleri yeniden çiz (wipe sonrası)
+// ── PATH ÇİZ (tüm) ──
 function redrawAll() {
     ctxD.clearRect(0, 0, cvW, cvH);
     for (var i = 0; i < paths.length; i++) renderPath(paths[i]);
     drawDirty = false;
 }
 
-// Tek path çiz
 function renderPath(p) {
     var n = p.nodes;
     if (!n || n.length < 2) return;
+    ctxD.save();
+    ctxD.strokeStyle = p.hue;
+    ctxD.lineWidth   = p.thick;
+    ctxD.lineCap     = 'round';
+    ctxD.lineJoin    = 'round';
+    ctxD.shadowColor = p.hue;
+    ctxD.shadowBlur  = 4;
     ctxD.beginPath();
     ctxD.moveTo(n[0].px, n[0].py);
     if (n.length === 2) {
@@ -245,21 +285,21 @@ function renderPath(p) {
         }
         ctxD.lineTo(n[n.length-1].px, n[n.length-1].py);
     }
+    ctxD.stroke();
+    ctxD.restore();
+}
+
+// ── SON SEGMENT (incremental) ──
+function drawLastSeg(p) {
+    var n = p.nodes, i = n.length - 1;
+    if (i < 1) return;
+    ctxD.save();
     ctxD.strokeStyle = p.hue;
     ctxD.lineWidth   = p.thick;
     ctxD.lineCap     = 'round';
     ctxD.lineJoin    = 'round';
     ctxD.shadowColor = p.hue;
-    ctxD.shadowBlur  = 5;
-    ctxD.globalAlpha = 1;
-    ctxD.stroke();
-    ctxD.shadowBlur  = 0;
-}
-
-// Sadece son segment çiz (incremental — çok hızlı)
-function drawLastSeg(p) {
-    var n = p.nodes, i = n.length-1;
-    if (i < 1) return;
+    ctxD.shadowBlur  = 4;
     ctxD.beginPath();
     if (i === 1) {
         ctxD.moveTo(n[0].px, n[0].py);
@@ -270,30 +310,24 @@ function drawLastSeg(p) {
         ctxD.moveTo(mx0, my0);
         ctxD.quadraticCurveTo(n[i-1].px, n[i-1].py, mx1, my1);
     }
-    ctxD.strokeStyle = p.hue;
-    ctxD.lineWidth   = p.thick;
-    ctxD.lineCap     = 'round';
-    ctxD.lineJoin    = 'round';
-    ctxD.shadowColor = p.hue;
-    ctxD.shadowBlur  = 5;
     ctxD.stroke();
-    ctxD.shadowBlur  = 0;
+    ctxD.restore();
 }
 
-// Silgi
+// ── SİLGİ ──
 function wipeNear(px, py) {
     var prev = paths.length;
     paths = paths.filter(function(p) {
         if (!p.nodes) return true;
         for (var j = 0; j < p.nodes.length; j++) {
-            if (Math.hypot(p.nodes[j].px-px, p.nodes[j].py-py) < ERASE_R) return false;
+            if (Math.hypot(p.nodes[j].px - px, p.nodes[j].py - py) < ERASE_R) return false;
         }
         return true;
     });
     if (paths.length !== prev) drawDirty = true;
 }
 
-// ANA FRAME
+// ── ANA FRAME ──
 function frame(out) {
     if (!launched) {
         launched = true;
@@ -303,94 +337,166 @@ function frame(out) {
 
     ensureSize();
 
-    // Overlay: kamera + karartma
+    // Overlay canvas: kamera görüntüsü + karartma
+    // cv-over transform:scaleX(-1) ile aynalı — kamera zaten ön kamera gibi görünür
     ctxO.drawImage(out.image, 0, 0, cvW, cvH);
-    ctxO.fillStyle = 'rgba(8,12,24,0.78)';
+    ctxO.fillStyle = 'rgba(8,12,24,0.76)';
     ctxO.fillRect(0, 0, cvW, cvH);
 
-    var detected=0, drawingNow=false, erasingNow=false;
+    var detected   = 0;
+    var drawingNow = false;
+    var erasingNow = false;
+    var dbgTxt     = '';
 
     if (out.multiHandLandmarks && out.multiHandedness) {
         detected = out.multiHandLandmarks.length;
-        var drawHand=null, ctrlHand=null;
 
-        for (var hi=0; hi<detected; hi++) {
-            var lbl = out.multiHandedness[hi].label;
-            if (lbl==='Left')  drawHand = out.multiHandLandmarks[hi];
-            if (lbl==='Right') ctrlHand = out.multiHandLandmarks[hi];
+        // MediaPipe el etiketi:
+        // Ön kamera (selfie) modunda etiketler TERSİNE gelir.
+        // Kullanıcının SAĞ eli → MP "Left" olarak işaretler
+        // Kullanıcının SOL eli → MP "Right" olarak işaretler
+        // Bu yüzden: drawHand = "Left" etiketi, ctrlHand = "Right" etiketi
+        //
+        // NOT: Arka kamera kullanılıyorsa bu tersine döner.
+        // Güvenli çözüm: etiket yerine bilek X pozisyonuna göre ayırt et.
+        // Ekranın sol tarafında olan el = kullanıcının SAĞ eli (aynalı görüntüde)
+
+        var hand0 = out.multiHandLandmarks[0] || null;
+        var hand1 = out.multiHandLandmarks[1] || null;
+
+        var drawHand = null;
+        var ctrlHand = null;
+
+        if (detected === 1) {
+            // Tek el varsa: her zaman çizim eli
+            drawHand = hand0;
+        } else if (detected >= 2) {
+            // İki el: bilek x konumuna göre ayır
+            // cv-over scaleX(-1) ile aynalı → x=0 ekranın sağı, x=1 ekranın solu
+            // Ekranda SOL tarafta görünen el → x değeri BÜYÜK (raw koordinat)
+            // Kullanıcının SAĞ eli ekranda solda görünür (aynalı)
+            // Yani: bilek x'i daha BÜYÜK olan el = kullanıcının sağ eli = çizim eli
+            var wx0 = hand0[0].x;
+            var wx1 = hand1[0].x;
+            if (wx0 > wx1) {
+                drawHand = hand0;
+                ctrlHand = hand1;
+            } else {
+                drawHand = hand1;
+                ctrlHand = hand0;
+            }
         }
 
-        // KONTROL ELİ — swipe algıla
+        // ── KONTROL ELİ (sol el) — yatay swipe ──
         if (ctrlHand) {
             leftXHist.push(ctrlHand[0].x);
-            if (leftXHist.length > 10) leftXHist.shift();
+            if (leftXHist.length > 12) leftXHist.shift();
+
             if (leftXHist.length >= 8) {
                 var delta = leftXHist[leftXHist.length-1] - leftXHist[0];
-                var now   = Date.now();
-                if (Math.abs(delta) > 0.13 && now-lastSwipeMs > 750) {
-                    if (delta < -0.13 && !eraserOn) {
-                        eraserOn=true; lastSwipeMs=now; leftXHist=[];
-                        notify('🧹 Silgi modu'); swipeHint(true);
+                var nowMs = Date.now();
+                // canvas aynalı: raw x azalıyor = ekranda sağa kayıyor
+                if (Math.abs(delta) > 0.12 && nowMs - lastSwipeMs > 800) {
+                    if (delta < -0.12 && !eraserOn) {
+                        eraserOn = true; lastSwipeMs = nowMs; leftXHist = [];
+                        notify('🧹 Silgi modu açıldı'); swipeHint(true);
                         gcCtrl.className='gc actrl'; cdesc.textContent='Sağa kaydırdı';
-                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; }, 900);
-                    } else if (delta > 0.13 && eraserOn) {
-                        eraserOn=false; lastSwipeMs=now; leftXHist=[];
-                        notify('✏️ Kalem modu'); swipeHint(false);
+                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; }, 1000);
+                    } else if (delta > 0.12 && eraserOn) {
+                        eraserOn = false; lastSwipeMs = nowMs; leftXHist = [];
+                        notify('✏️ Kalem modu açıldı'); swipeHint(false);
                         gcCtrl.className='gc actrl'; cdesc.textContent='Sola kaydırdı';
-                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; }, 900);
+                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; }, 1000);
                     }
                 }
             }
-            // Hafif iskelet
-            drawConnectors(ctxO, ctrlHand, HAND_CONNECTIONS, {color:'rgba(165,214,167,0.15)',lineWidth:1});
-        } else { leftXHist=[]; }
 
-        // ÇİZİM ELİ
+            // İskelet (overlay canvas — aynalı)
+            drawConnectors(ctxO, ctrlHand, HAND_CONNECTIONS, {color:'rgba(165,214,167,0.2)',lineWidth:1.5});
+            drawLandmarks(ctxO, ctrlHand, {color:'rgba(165,214,167,0.4)',lineWidth:1,radius:2});
+            dbgTxt += 'CTRL x:' + ctrlHand[0].x.toFixed(2) + ' ';
+        } else {
+            leftXHist = [];
+        }
+
+        // ── ÇİZİM ELİ ──
         if (drawHand) {
             var fist = isFist(drawHand);
-            var rawX = (fist ? drawHand[9].x : drawHand[8].x) * cvW;
-            var rawY = (fist ? drawHand[9].y : drawHand[8].y) * cvH;
 
-            if (curCx===null) { curCx=rawX; curCy=rawY; }
-            else { curCx+=(rawX-curCx)*0.4; curCy+=(rawY-curCy)*0.4; }
+            // Overlay canvas aynalı (scaleX -1), bu yüzden iskelet doğrudan çizilir
+            drawConnectors(ctxO, drawHand, HAND_CONNECTIONS, {color:'rgba(79,195,247,0.2)',lineWidth:1.5});
+            drawLandmarks(ctxO, drawHand, {color:'rgba(79,195,247,0.5)',lineWidth:1,radius:2});
 
-            drawConnectors(ctxO, drawHand, HAND_CONNECTIONS, {color:'rgba(79,195,247,0.15)',lineWidth:1});
+            // İmleç için koordinat: draw canvas AYNALANMAMIŞ
+            // raw x'i çevirmemiz gerekiyor: screenX = (1 - raw.x) * cvW
+            var rawLm  = fist ? drawHand[9] : drawHand[8];
+            var screenX = (1 - rawLm.x) * cvW;  // ayna düzeltmesi
+            var screenY = rawLm.y * cvH;
 
+            if (curCx === null) { curCx = screenX; curCy = screenY; }
+            else { curCx += (screenX - curCx) * 0.45; curCy += (screenY - curCy) * 0.45; }
+
+            // İmleç draw canvas üzerine çiz (aynasız)
             if (fist && !eraserOn) {
-                ctxO.beginPath(); ctxO.arc(curCx,curCy,9,0,6.2832);
-                ctxO.fillStyle=inkColor; ctxO.shadowColor=inkColor; ctxO.shadowBlur=12;
-                ctxO.fill(); ctxO.shadowBlur=0;
-                drawingNow=true;
+                ctxD.save();
+                ctxD.beginPath();
+                ctxD.arc(curCx, curCy, 10, 0, 6.2832);
+                ctxD.fillStyle = inkColor;
+                ctxD.shadowColor = inkColor;
+                ctxD.shadowBlur = 14;
+                ctxD.fill();
+                ctxD.restore();
+                drawingNow = true;
             } else if (fist && eraserOn) {
-                ctxO.beginPath(); ctxO.arc(curCx,curCy,ERASE_R,0,6.2832);
-                ctxO.strokeStyle='rgba(244,143,177,0.6)'; ctxO.lineWidth=2; ctxO.stroke();
-                erasingNow=true;
+                ctxD.save();
+                ctxD.beginPath();
+                ctxD.arc(curCx, curCy, ERASE_R, 0, 6.2832);
+                ctxD.strokeStyle = 'rgba(244,143,177,0.7)';
+                ctxD.lineWidth = 2;
+                ctxD.stroke();
+                ctxD.restore();
+                erasingNow = true;
             } else {
-                ctxO.beginPath(); ctxO.arc(curCx,curCy,5,0,6.2832);
-                ctxO.strokeStyle='rgba(79,195,247,0.35)'; ctxO.lineWidth=1.5; ctxO.stroke();
+                ctxD.save();
+                ctxD.beginPath();
+                ctxD.arc(curCx, curCy, 6, 0, 6.2832);
+                ctxD.strokeStyle = 'rgba(79,195,247,0.4)';
+                ctxD.lineWidth = 1.5;
+                ctxD.stroke();
+                ctxD.restore();
             }
 
+            // ── Gerçek çizim/silme ──
             if (fist) {
                 if (eraserOn) {
-                    wipeNear(curCx, curCy); activePath=null;
+                    wipeNear(curCx, curCy);
+                    activePath = null;
                 } else {
                     if (!activePath) {
-                        activePath={nodes:[{px:curCx,py:curCy}],hue:inkColor,thick:inkSize};
-                        paths.push(activePath); redoPool=[];
+                        activePath = {nodes:[{px:curCx, py:curCy}], hue:inkColor, thick:inkSize};
+                        paths.push(activePath);
+                        redoPool = [];
                     } else {
-                        activePath.nodes.push({px:curCx,py:curCy});
-                        drawLastSeg(activePath); // incremental — sadece son segment
+                        activePath.nodes.push({px:curCx, py:curCy});
+                        drawLastSeg(activePath);
                     }
                 }
-            } else { activePath=null; }
-        } else { curCx=null; curCy=null; activePath=null; }
+            } else {
+                activePath = null;
+            }
+
+            dbgTxt += 'DRAW fist:' + (fist?'Y':'N') + ' x:' + rawLm.x.toFixed(2);
+        } else {
+            curCx = null; curCy = null; activePath = null;
+        }
     }
 
     if (drawDirty) redrawAll();
     hudUpdate(detected, drawingNow, erasingNow);
+    dbg.textContent = dbgTxt || '—';
 }
 
-// Keyboard (desktop)
+// ── KİLAVYE (desktop) ──
 document.addEventListener('keydown', function(e){
     if(e.key==='+'||e.key==='='){inkSize=Math.min(24,inkSize+1);notify('Fırça: '+inkSize);}
     if(e.key==='-'){inkSize=Math.max(1,inkSize-1);notify('Fırça: '+inkSize);}
@@ -399,20 +505,30 @@ document.addEventListener('keydown', function(e){
     if(e.code==='Space'){e.preventDefault();paths=[];redoPool=[];drawDirty=true;notify('🗑 Temizlendi');}
 });
 
-// Pinch — fırça boyutu
+// ── PİNÇ — fırça boyutu ──
 var pinchD0=null, pinchS0=inkSize;
-document.addEventListener('touchstart',function(e){if(e.touches.length===2){pinchD0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pinchS0=inkSize;}},{passive:true});
-document.addEventListener('touchmove',function(e){if(e.touches.length===2&&pinchD0){var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);inkSize=Math.max(1,Math.min(24,Math.round(pinchS0*d/pinchD0)));}},{passive:true});
+document.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){
+        pinchD0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+        pinchS0=inkSize;
+    }
+},{passive:true});
+document.addEventListener('touchmove',function(e){
+    if(e.touches.length===2&&pinchD0){
+        var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+        inkSize=Math.max(1,Math.min(24,Math.round(pinchS0*d/pinchD0)));
+    }
+},{passive:true});
 document.addEventListener('touchend',function(e){if(e.touches.length<2)pinchD0=null;},{passive:true});
 
-// MediaPipe
+// ── MEDİAPİPE ──
 try {
     var tracker = new Hands({
         locateFile: function(f){ return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/'+f; }
     });
     tracker.setOptions({
         maxNumHands: 2,
-        modelComplexity: 0,           // LITE model — mobilde %40+ daha hızlı
+        modelComplexity: 0,
         minDetectionConfidence: 0.65,
         minTrackingConfidence: 0.55
     });
@@ -420,18 +536,23 @@ try {
 
     var feed = new Camera(webcam, {
         onFrame: async function(){
-            try { await tracker.send({image:webcam}); } catch(e){ console.warn(e); }
+            try { await tracker.send({image: webcam}); }
+            catch(e){ console.warn(e); }
         },
-        width: 480,    // 640→480: işlemci yükü önemli ölçüde azalır
+        width: 480,
         height: 360
     });
 
-    feed.start().catch(function(){
-        document.getElementById('splash-sub').textContent='Kamera hatası — izinleri kontrol edin.';
-        setTimeout(function(){ splash.classList.add('done'); setTimeout(function(){ splash.style.display='none'; },500); },2500);
+    feed.start().catch(function(err){
+        console.error(err);
+        document.getElementById('splash-sub').textContent = 'Kamera hatası — tarayıcı iznini kontrol edin.';
+        setTimeout(function(){
+            splash.classList.add('done');
+            setTimeout(function(){ splash.style.display='none'; }, 500);
+        }, 3000);
     });
+
 } catch(e){ console.error(e); }
 </script>
 </body>
 </html>
-
