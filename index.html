@@ -15,11 +15,10 @@
         :root{--blue:#4fc3f7;--pink:#f48fb1;--green:#a5d6a7;--bg:#080c18;--panel:rgba(8,12,28,0.9);--border:rgba(79,195,247,0.15)}
         body{background:var(--bg);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;touch-action:none}
         video{display:none}
-
         canvas{position:absolute;inset:0;width:100%;height:100%}
-        #cv-bg {z-index:1;transform:scaleX(-1)}   /* kamera — aynalı */
-        #cv-ink{z-index:2}                         /* çizim — aynasız, koordinat elle çevrilir */
-        #cv-ui {z-index:3;transform:scaleX(-1)}    /* iskelet+imleç — aynalı, her frame temizlenir */
+        #cv-bg {z-index:1;transform:scaleX(-1)}
+        #cv-ink{z-index:2}
+        #cv-ui {z-index:3;transform:scaleX(-1)}
 
         #splash{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity 0.4s}
         #splash.done{opacity:0;pointer-events:none}
@@ -74,7 +73,7 @@
 <div id="splash">
     <div class="ring"></div>
     <div id="splash-title">WebPen Mobil</div>
-    <div id="splash-sub">Kamera başlatılıyor…</div>
+    <div id="splash-sub">Kamera ba\u015flat\u0131l\u0131yor\u2026</div>
 </div>
 
 <video id="webcam" autoplay playsinline muted></video>
@@ -84,35 +83,26 @@
 
 <div id="hud-top">
     <div class="hc" style="width:46px"><div class="dot" id="dot"></div><div class="hl">MOD</div></div>
-    <div class="hc grow"><div class="hl">DURUM</div><div class="hv" id="stlbl">El bekleniyor…</div></div>
+    <div class="hc grow"><div class="hl">DURUM</div><div class="hv" id="stlbl">El bekleniyor\u2026</div></div>
     <div class="hc"><div class="hl">EL</div><div class="hv" id="hcnt">0</div></div>
-    <div class="hc"><div class="hl">FIRÇA</div><div class="hv" id="bval">5</div></div>
+    <div class="hc"><div class="hl">FIR\u00c7A</div><div class="hv" id="bval">5</div></div>
 </div>
 
 <div id="hud-bot">
     <div id="gcards">
         <div class="gc" id="gc-draw">
-            <div class="gi">✊</div>
-            <div class="ginfo">
-                <div class="gt">ÇİZ</div>
-                <div class="gd">Sağ el yumruk</div>
-            </div>
+            <div class="gi">\u270a</div>
+            <div class="ginfo"><div class="gt">\u00c7\u0130Z</div><div class="gd">Sa\u011f el yumruk</div></div>
             <div class="gs"></div>
         </div>
         <div class="gc" id="gc-erase">
-            <div class="gi">✊</div>
-            <div class="ginfo">
-                <div class="gt">SİLGİ</div>
-                <div class="gd">Sol el yumruk</div>
-            </div>
+            <div class="gi">\u270a</div>
+            <div class="ginfo"><div class="gt">S\u0130LG\u0130</div><div class="gd">Sol el yumruk</div></div>
             <div class="gs"></div>
         </div>
         <div class="gc" id="gc-ctrl">
-            <div class="gi">🖐</div>
-            <div class="ginfo">
-                <div class="gt">KALEM</div>
-                <div class="gd">Sol el açık</div>
-            </div>
+            <div class="gi">\ud83d\udd90</div>
+            <div class="ginfo"><div class="gt">KALEM</div><div class="gd">Sol el a\u00e7\u0131k</div></div>
             <div class="gs"></div>
         </div>
     </div>
@@ -127,17 +117,17 @@
         <div class="sw" data-c="#80cbc4" style="background:#80cbc4"></div>
         <div class="sw" data-c="#ffcc80" style="background:#ffcc80"></div>
         <div id="bbar">
-            <span id="blbl">FIRÇA</span>
+            <span id="blbl">FIR\u00c7A</span>
             <div id="btrack"><div id="bfill" style="width:20%"></div></div>
         </div>
     </div>
 </div>
 
 <div id="notif"></div>
-<div id="dbg">—</div>
+<div id="dbg">\u2014</div>
 
 <script>
-// ── DOM ──
+// \u2500\u2500 DOM \u2500\u2500
 var webcam  = document.getElementById('webcam');
 var cvBg    = document.getElementById('cv-bg');
 var cvInk   = document.getElementById('cv-ink');
@@ -157,11 +147,11 @@ var gcErase = document.getElementById('gc-erase');
 var gcCtrl  = document.getElementById('gc-ctrl');
 var dbgEl   = document.getElementById('dbg');
 
-// ── STATE ──
+// \u2500\u2500 STATE \u2500\u2500
 var paths      = [];
 var activePath = null;
 var redoPool   = [];
-var eraserOn   = false;   // sol el yumruk mu?
+var eraserOn   = false;
 var inkColor   = '#4fc3f7';
 var inkSize    = 5;
 var launched   = false;
@@ -170,11 +160,14 @@ var lastHudMs  = 0;
 var W = 0, H = 0;
 var inkDirty   = false;
 var ERASE_R    = 44;
-
-// Mod değişim debounce (titreme önleme)
 var lastModeChange = 0;
 
-// ── BOYUT ──
+// \u2500\u2500 YEN\u0130: frame throttle & busy flag \u2500\u2500
+var busy       = false;      // MediaPipe hen\u00fcz bitirmedi \u2192 yeni frame g\u00f6nderme
+var lastFrameMs = 0;
+var FRAME_INTERVAL = 80;     // ~12 fps yeterli, mobil \u0131s\u0131nmaz (de\u011fi\u015ftirilebilir: 66=15fps, 100=10fps)
+
+// \u2500\u2500 BOYUT \u2500\u2500
 function ensureSize() {
     var w = window.innerWidth, h = window.innerHeight;
     if (w === W && h === H) return;
@@ -185,7 +178,7 @@ function ensureSize() {
     inkDirty = true;
 }
 
-// ── NOTIFY ──
+// \u2500\u2500 NOTIFY \u2500\u2500
 function notify(txt) {
     var el = document.createElement('div');
     el.className = 'nm'; el.textContent = txt;
@@ -193,7 +186,7 @@ function notify(txt) {
     setTimeout(function(){ if(el.parentNode) el.remove(); }, 2000);
 }
 
-// ── RENK ──
+// \u2500\u2500 RENK \u2500\u2500
 var swatches = document.querySelectorAll('.sw');
 function pickColor(c) {
     inkColor = c;
@@ -203,7 +196,7 @@ swatches.forEach(function(s){
     s.addEventListener('pointerdown', function(e){ e.preventDefault(); pickColor(s.getAttribute('data-c')); });
 });
 
-// ── HUD ──
+// \u2500\u2500 HUD \u2500\u2500
 function hudUpdate(detected, drawing, erasing) {
     var now = Date.now();
     if (now - lastHudMs < 100) return;
@@ -216,32 +209,32 @@ function hudUpdate(detected, drawing, erasing) {
     gcCtrl.className  = 'gc';
     if (!detected) {
         dot.className = 'dot';
-        stlbl.textContent = 'El bekleniyor…';
+        stlbl.textContent = 'El bekleniyor\u2026';
         stlbl.className = 'hv';
     } else if (drawing) {
         dot.className = 'dot draw';
-        stlbl.textContent = '✏️ Çiziliyor';
+        stlbl.textContent = '\u270f\ufe0f \u00c7iziliyor';
         stlbl.className = 'hv on';
         gcDraw.className = 'gc adraw';
     } else if (erasing) {
         dot.className = 'dot erase';
-        stlbl.textContent = '🧹 Siliniyor';
+        stlbl.textContent = '\ud83e\uddf9 Siliniyor';
         stlbl.className = 'hv er';
         gcErase.className = 'gc aerase';
     } else if (eraserOn) {
         dot.className = 'dot erase';
-        stlbl.textContent = '🧹 Silgi modu';
+        stlbl.textContent = '\ud83e\uddf9 Silgi modu';
         stlbl.className = 'hv er';
         gcErase.className = 'gc aerase';
     } else {
         dot.className = 'dot';
-        stlbl.textContent = '✋ Hazır';
+        stlbl.textContent = '\u270b Haz\u0131r';
         stlbl.className = 'hv';
         gcCtrl.className = 'gc actrl';
     }
 }
 
-// ── YUMRUK: en az 3 parmak kıvrık ──
+// \u2500\u2500 YUMRUK \u2500\u2500
 function isFist(m) {
     var c = 0;
     if (m[8].y  > m[6].y)  c++;
@@ -251,7 +244,7 @@ function isFist(m) {
     return c >= 3;
 }
 
-// ── TÜM ÇİZİMLERİ YENİDEN ÇİZ ──
+// \u2500\u2500 T\u00dcM \u00c7\u0130Z\u0130MLER\u0130 YEN\u0130DEN \u00c7\u0130Z \u2500\u2500
 function redrawAll() {
     cInk.clearRect(0, 0, W, H);
     for (var i = 0; i < paths.length; i++) drawFullPath(paths[i]);
@@ -282,7 +275,7 @@ function drawFullPath(p) {
     cInk.restore();
 }
 
-// ── SON SEGMENT (incremental) ──
+// \u2500\u2500 SON SEGMENT \u2500\u2500
 function drawLastSeg(p) {
     var n = p.nodes, i = n.length-1;
     if (i < 1) return;
@@ -307,7 +300,7 @@ function drawLastSeg(p) {
     cInk.restore();
 }
 
-// ── SİLGİ ──
+// \u2500\u2500 S\u0130LG\u0130 \u2500\u2500
 function wipeNear(px, py) {
     var prev = paths.length;
     paths = paths.filter(function(p) {
@@ -320,8 +313,10 @@ function wipeNear(px, py) {
     if (paths.length !== prev) inkDirty = true;
 }
 
-// ── ANA FRAME ──
+// \u2500\u2500 ANA FRAME \u2500\u2500
 function frame(out) {
+    busy = false; // MediaPipe bitti, sonraki frame g\u00f6nderilebilir
+
     if (!launched) {
         launched = true;
         splash.classList.add('done');
@@ -330,12 +325,10 @@ function frame(out) {
 
     ensureSize();
 
-    // Katman 1: kamera
     cBg.drawImage(out.image, 0, 0, W, H);
     cBg.fillStyle = 'rgba(8,12,24,0.76)';
     cBg.fillRect(0, 0, W, H);
 
-    // Katman 3: UI sıfırla
     cUi.clearRect(0, 0, W, H);
 
     var detected   = 0;
@@ -346,10 +339,8 @@ function frame(out) {
     if (out.multiHandLandmarks && out.multiHandedness) {
         detected = out.multiHandLandmarks.length;
 
-        // El ayırt etme: ham bilek X'e göre
-        // cv-ui/cv-bg scaleX(-1) → ham x yüksek = ekranda sol = kullanıcının SAĞ eli
-        var drawHand = null;  // sağ el (çizim)
-        var ctrlHand = null;  // sol el (silgi kontrolü)
+        var drawHand = null;
+        var ctrlHand = null;
 
         if (detected === 1) {
             drawHand = out.multiHandLandmarks[0];
@@ -363,155 +354,21 @@ function frame(out) {
             }
         }
 
-        // ── SOL EL: yumruk → silgi modu, açık → kalem modu ──
         if (ctrlHand) {
             var ctrlFist = isFist(ctrlHand);
             var now = Date.now();
-
-            // Debounce: 400ms'de bir mod değişimi
             if (now - lastModeChange > 400) {
                 if (ctrlFist && !eraserOn) {
                     eraserOn = true;
                     lastModeChange = now;
                     activePath = null;
-                    notify('🧹 Silgi modu');
+                    notify('\ud83e\uddf9 Silgi modu');
                 } else if (!ctrlFist && eraserOn) {
                     eraserOn = false;
                     lastModeChange = now;
-                    notify('✏️ Kalem modu');
+                    notify('\u270f\ufe0f Kalem modu');
                 }
             }
-
-            // İskelet (yeşil = kontrol eli)
             drawConnectors(cUi, ctrlHand, HAND_CONNECTIONS, {color: ctrlFist ? 'rgba(244,143,177,0.35)' : 'rgba(165,214,167,0.25)', lineWidth: 1.5});
             drawLandmarks(cUi, ctrlHand, {color: ctrlFist ? 'rgba(244,143,177,0.6)' : 'rgba(165,214,167,0.5)', lineWidth: 1, radius: 2});
-
-            dbg += 'SOL fist:' + (ctrlFist?'✓':'✗') + ' silgi:' + (eraserOn?'ON':'OFF') + '\n';
-        }
-
-        // ── SAĞ EL: yumruk → çiz/sil ──
-        if (drawHand) {
-            var drawFist = isFist(drawHand);
-
-            // İskelet (mavi = çizim eli)
-            drawConnectors(cUi, drawHand, HAND_CONNECTIONS, {color: 'rgba(79,195,247,0.25)', lineWidth: 1.5});
-            drawLandmarks(cUi, drawHand, {color: 'rgba(79,195,247,0.55)', lineWidth: 1, radius: 2});
-
-            // Çizim noktası: cv-ink aynasız → x ters çevir
-            var lm   = drawFist ? drawHand[9] : drawHand[8];
-            var inkX = (1 - lm.x) * W;
-            var inkY = lm.y * H;
-
-            if (curX === null) { curX = inkX; curY = inkY; }
-            else { curX += (inkX - curX) * 0.45; curY += (inkY - curY) * 0.45; }
-
-            // İmleç cv-ui'ye (aynalı → raw x kullan)
-            var uiX = lm.x * W;
-            var uiY = inkY;
-
-            if (drawFist && !eraserOn) {
-                // Çizim imleci
-                cUi.save();
-                cUi.beginPath(); cUi.arc(uiX, uiY, 10, 0, 6.2832);
-                cUi.fillStyle = inkColor;
-                cUi.shadowColor = inkColor; cUi.shadowBlur = 16;
-                cUi.fill(); cUi.restore();
-                drawingNow = true;
-
-            } else if (drawFist && eraserOn) {
-                // Silgi imleci
-                cUi.save();
-                cUi.beginPath(); cUi.arc(uiX, uiY, ERASE_R, 0, 6.2832);
-                cUi.strokeStyle = 'rgba(244,143,177,0.8)'; cUi.lineWidth = 2.5; cUi.stroke();
-                // X işareti
-                cUi.strokeStyle = 'rgba(244,143,177,0.5)'; cUi.lineWidth = 1.5;
-                cUi.beginPath();
-                cUi.moveTo(uiX-14, uiY-14); cUi.lineTo(uiX+14, uiY+14);
-                cUi.moveTo(uiX+14, uiY-14); cUi.lineTo(uiX-14, uiY+14);
-                cUi.stroke(); cUi.restore();
-                erasingNow = true;
-
-            } else {
-                // Boşta imleci
-                cUi.save();
-                cUi.beginPath(); cUi.arc(uiX, uiY, 6, 0, 6.2832);
-                cUi.strokeStyle = 'rgba(79,195,247,0.4)'; cUi.lineWidth = 1.5; cUi.stroke();
-                cUi.restore();
-            }
-
-            // ── Gerçek çizim / silme ──
-            if (drawFist) {
-                if (eraserOn) {
-                    wipeNear(curX, curY);
-                    activePath = null;
-                } else {
-                    if (!activePath) {
-                        activePath = {nodes:[{px:curX, py:curY}], hue:inkColor, thick:inkSize};
-                        paths.push(activePath);
-                        redoPool = [];
-                    } else {
-                        activePath.nodes.push({px:curX, py:curY});
-                        drawLastSeg(activePath);
-                    }
-                }
-            } else {
-                activePath = null;
-            }
-
-            dbg += 'SAĞ fist:' + (drawFist?'✓':'✗') + ' x:' + lm.x.toFixed(2) + ' inkX:' + Math.round(curX);
-        } else {
-            curX = null; curY = null; activePath = null;
-            dbg += 'sağ el yok';
-        }
-    }
-
-    if (inkDirty) redrawAll();
-    hudUpdate(detected, drawingNow, erasingNow);
-    dbgEl.textContent = dbg || '—';
-}
-
-// ── KLAVYE ──
-document.addEventListener('keydown', function(e){
-    if(e.key==='+'||e.key==='='){inkSize=Math.min(24,inkSize+1);notify('Fırça: '+inkSize);}
-    if(e.key==='-'){inkSize=Math.max(1,inkSize-1);notify('Fırça: '+inkSize);}
-    if(e.ctrlKey&&e.key==='z'){e.preventDefault();if(paths.length){redoPool.push(paths.pop());inkDirty=true;notify('↩ Geri');}}
-    if(e.ctrlKey&&e.key==='y'){e.preventDefault();if(redoPool.length){paths.push(redoPool.pop());inkDirty=true;notify('↪ İleri');}}
-    if(e.code==='Space'){e.preventDefault();paths=[];redoPool=[];inkDirty=true;notify('🗑 Temizlendi');}
-});
-
-// ── PİNÇ ──
-var pinchD0=null, pinchS0=inkSize;
-document.addEventListener('touchstart',function(e){if(e.touches.length===2){pinchD0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pinchS0=inkSize;}},{passive:true});
-document.addEventListener('touchmove',function(e){if(e.touches.length===2&&pinchD0){var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);inkSize=Math.max(1,Math.min(24,Math.round(pinchS0*d/pinchD0)));}},{passive:true});
-document.addEventListener('touchend',function(e){if(e.touches.length<2)pinchD0=null;},{passive:true});
-
-// ── MEDİAPİPE ──
-try {
-    var tracker = new Hands({
-        locateFile: function(f){ return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/'+f; }
-    });
-    tracker.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 0,
-        minDetectionConfidence: 0.65,
-        minTrackingConfidence: 0.55
-    });
-    tracker.onResults(frame);
-
-    var feed = new Camera(webcam, {
-        onFrame: async function(){
-            try { await tracker.send({image: webcam}); }
-            catch(e){ console.warn(e); }
-        },
-        width: 480,
-        height: 360
-    });
-
-    feed.start().catch(function(err){
-        document.getElementById('splash-sub').textContent = 'Kamera hatası — tarayıcı iznini kontrol edin.';
-        setTimeout(function(){ splash.classList.add('done'); setTimeout(function(){ splash.style.display='none'; },500); },3000);
-    });
-} catch(e){ console.error(e); }
-</script>
-</body>
-</html>
+            dbg += 'SOL
