@@ -12,16 +12,19 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-        :root{
-            --blue:#4fc3f7;--pink:#f48fb1;--green:#a5d6a7;
-            --bg:#080c18;--panel:rgba(8,12,28,0.9);--border:rgba(79,195,247,0.15);
-        }
+        :root{--blue:#4fc3f7;--pink:#f48fb1;--green:#a5d6a7;--bg:#080c18;--panel:rgba(8,12,28,0.9);--border:rgba(79,195,247,0.15)}
         body{background:var(--bg);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;touch-action:none}
         video{display:none}
 
-        /* Overlay canvas aynalı, draw canvas normal (koordinatlar zaten düzeltildi) */
-        #cv-draw{position:absolute;inset:0;width:100%;height:100%;z-index:1}
-        #cv-over{position:absolute;inset:0;width:100%;height:100%;z-index:2;transform:scaleX(-1)}
+        /* 3 katman:
+           1) cv-bg  : kamera görüntüsü + karartma  (aynalı)
+           2) cv-ink : kalıcı çizimler              (normal, koordinat elle çevrilir)
+           3) cv-ui  : imleç + el iskeleti           (aynalı, her frame temizlenir)
+        */
+        canvas{position:absolute;inset:0;width:100%;height:100%}
+        #cv-bg {z-index:1;transform:scaleX(-1)}
+        #cv-ink{z-index:2}
+        #cv-ui {z-index:3;transform:scaleX(-1)}
 
         #splash{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity 0.4s}
         #splash.done{opacity:0;pointer-events:none}
@@ -32,8 +35,7 @@
 
         #hud-top{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:stretch;height:48px;background:var(--panel);border-bottom:1px solid var(--border)}
         .hc{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;padding:0 12px;border-right:1px solid rgba(255,255,255,0.04);min-width:0}
-        .hc:last-child{border-right:none}
-        .hc.grow{flex:1}
+        .hc:last-child{border-right:none}.hc.grow{flex:1}
         .hl{font-size:7px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.25)}
         .hv{font-size:11px;font-weight:600;color:rgba(255,255,255,0.8);white-space:nowrap}
         .hv.on{color:var(--blue)}.hv.er{color:var(--pink)}
@@ -49,7 +51,7 @@
         .gc.actrl{background:rgba(165,214,167,0.1);border-color:rgba(165,214,167,0.4)}
         .gi{font-size:18px;line-height:1}
         .ginfo{flex:1;min-width:0}
-        .gt{font-size:9px;font-weight:700;letter-spacing:.3px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .gt{font-size:9px;font-weight:700;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .gd{font-size:8px;color:rgba(255,255,255,0.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .gs{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.08);flex-shrink:0;transition:background .2s,box-shadow .2s}
         .gc.adraw .gs{background:var(--blue);box-shadow:0 0 5px var(--blue)}
@@ -69,14 +71,13 @@
         @keyframes nfIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes nfOut{to{opacity:0;transform:translateY(-6px)}}
 
-        #ship{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none;opacity:0;transition:opacity .25s;background:rgba(8,12,28,0.9);border:1px solid var(--border);border-radius:12px;padding:14px 24px;display:flex;flex-direction:column;align-items:center;gap:4px}
+        #ship{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none;opacity:0;transition:opacity .25s;background:rgba(8,12,28,0.92);border:1px solid var(--border);border-radius:12px;padding:14px 24px;display:flex;flex-direction:column;align-items:center;gap:4px}
         #ship.show{opacity:1}
         #sarr{font-size:32px;animation:pulse .55s ease infinite alternate}
         @keyframes pulse{from{opacity:.4}to{opacity:1}}
         #stxt{font-size:12px;color:var(--green);font-weight:700;letter-spacing:1px}
 
-        /* Debug panel — geliştirme sırasında el durumunu gösterir */
-        #dbg{position:fixed;top:56px;right:8px;z-index:10;background:rgba(0,0,0,0.6);color:rgba(255,255,255,0.5);font-size:9px;padding:4px 8px;border-radius:5px;pointer-events:none;line-height:1.6}
+        #dbg{position:fixed;bottom:110px;left:8px;z-index:10;background:rgba(0,0,0,0.55);color:rgba(255,255,255,0.45);font-size:9px;padding:3px 7px;border-radius:5px;pointer-events:none;line-height:1.7;font-family:monospace}
     </style>
 </head>
 <body>
@@ -88,8 +89,13 @@
 </div>
 
 <video id="webcam" autoplay playsinline muted></video>
-<canvas id="cv-draw"></canvas>
-<canvas id="cv-over"></canvas>
+
+<!-- Katman 1: kamera arka plan -->
+<canvas id="cv-bg"></canvas>
+<!-- Katman 2: kalıcı çizim -->
+<canvas id="cv-ink"></canvas>
+<!-- Katman 3: geçici UI (iskelet + imleç) -->
+<canvas id="cv-ui"></canvas>
 
 <div id="hud-top">
     <div class="hc" style="width:46px"><div class="dot" id="dot"></div><div class="hl">MOD</div></div>
@@ -135,15 +141,17 @@
 
 <div id="notif"></div>
 <div id="ship"><div id="sarr">←</div><div id="stxt">SİLGİ MODU</div></div>
-<div id="dbg">—</div>
+<div id="dbg">başlatılıyor…</div>
 
 <script>
 // ── DOM ──
 var webcam  = document.getElementById('webcam');
-var cvDraw  = document.getElementById('cv-draw');
-var cvOver  = document.getElementById('cv-over');
-var ctxD    = cvDraw.getContext('2d');
-var ctxO    = cvOver.getContext('2d');
+var cvBg    = document.getElementById('cv-bg');    // kamera
+var cvInk   = document.getElementById('cv-ink');   // çizim (kalıcı)
+var cvUi    = document.getElementById('cv-ui');    // iskelet+imleç (geçici)
+var cBg     = cvBg.getContext('2d');
+var cInk    = cvInk.getContext('2d');
+var cUi     = cvUi.getContext('2d');
 var splash  = document.getElementById('splash');
 var dot     = document.getElementById('dot');
 var stlbl   = document.getElementById('stlbl');
@@ -158,7 +166,7 @@ var cdesc   = document.getElementById('cdesc');
 var ship    = document.getElementById('ship');
 var sarr    = document.getElementById('sarr');
 var stxt    = document.getElementById('stxt');
-var dbg     = document.getElementById('dbg');
+var dbgEl   = document.getElementById('dbg');
 
 // ── STATE ──
 var paths      = [];
@@ -169,8 +177,8 @@ var inkColor   = '#4fc3f7';
 var inkSize    = 5;
 var launched   = false;
 
-// Cursor (draw canvas koordinatları — aynasız)
-var curCx = null, curCy = null;
+// Smoothed cursor (cv-ink koordinat uzayında)
+var curX = null, curY = null;
 
 // Swipe
 var leftXHist   = [];
@@ -180,19 +188,20 @@ var swipeTimer  = null;
 // HUD throttle
 var lastHudMs = 0;
 
-// Canvas boyutu cache
-var cvW = 0, cvH = 0;
-var drawDirty = false;
-var ERASE_R = 40;
+// Canvas boyut cache
+var W = 0, H = 0;
+var inkDirty = false;  // true → redrawAll çağır
+var ERASE_R  = 40;
 
-// ── CANVAS BOYUT ──
+// ── BOYUT ──
 function ensureSize() {
     var w = window.innerWidth, h = window.innerHeight;
-    if (w === cvW && h === cvH) return;
-    cvW = w; cvH = h;
-    cvDraw.width = w; cvDraw.height = h;
-    cvOver.width = w; cvOver.height = h;
-    drawDirty = true;
+    if (w === W && h === H) return;
+    W = w; H = h;
+    cvBg.width  = w; cvBg.height  = h;
+    cvInk.width = w; cvInk.height = h;
+    cvUi.width  = w; cvUi.height  = h;
+    inkDirty = true;
 }
 
 // ── NOTIFY ──
@@ -245,73 +254,72 @@ function hudUpdate(detected, drawing, erasing) {
     }
 }
 
-// ── YUMRUK TESPİTİ ──
-// Parmak uçlarını (tip) ikinci eklemdeki (pip) y ile karşılaştır.
-// Yumrukta tip > pip (daha aşağıda). 4 parmaktan 3'ü yeterliyse yumruk.
+// ── YUMRUK ──
+// 4 parmaktan en az 3'ünün ucu PIP ekleminden daha aşağıdaysa yumruk
 function isFist(m) {
-    var curled = 0;
-    // index=8/6, middle=12/10, ring=16/14, pinky=20/18
-    if (m[8].y  > m[6].y)  curled++;
-    if (m[12].y > m[10].y) curled++;
-    if (m[16].y > m[14].y) curled++;
-    if (m[20].y > m[18].y) curled++;
-    return curled >= 3;
+    var c = 0;
+    if (m[8].y  > m[6].y)  c++;
+    if (m[12].y > m[10].y) c++;
+    if (m[16].y > m[14].y) c++;
+    if (m[20].y > m[18].y) c++;
+    return c >= 3;
 }
 
-// ── PATH ÇİZ (tüm) ──
+// ── ÇİZİM CANVAS'I TAM YENİDEN ÇİZ ──
 function redrawAll() {
-    ctxD.clearRect(0, 0, cvW, cvH);
-    for (var i = 0; i < paths.length; i++) renderPath(paths[i]);
-    drawDirty = false;
+    cInk.clearRect(0, 0, W, H);
+    for (var i = 0; i < paths.length; i++) drawFullPath(cInk, paths[i]);
+    inkDirty = false;
 }
 
-function renderPath(p) {
+// ── TEK PATH ÇİZ ──
+function drawFullPath(ctx, p) {
     var n = p.nodes;
     if (!n || n.length < 2) return;
-    ctxD.save();
-    ctxD.strokeStyle = p.hue;
-    ctxD.lineWidth   = p.thick;
-    ctxD.lineCap     = 'round';
-    ctxD.lineJoin    = 'round';
-    ctxD.shadowColor = p.hue;
-    ctxD.shadowBlur  = 4;
-    ctxD.beginPath();
-    ctxD.moveTo(n[0].px, n[0].py);
+    ctx.save();
+    ctx.strokeStyle = p.hue;
+    ctx.lineWidth   = p.thick;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.shadowColor = p.hue;
+    ctx.shadowBlur  = 4;
+    ctx.beginPath();
+    ctx.moveTo(n[0].px, n[0].py);
     if (n.length === 2) {
-        ctxD.lineTo(n[1].px, n[1].py);
+        ctx.lineTo(n[1].px, n[1].py);
     } else {
         for (var k = 1; k < n.length-1; k++) {
-            ctxD.quadraticCurveTo(n[k].px, n[k].py, (n[k].px+n[k+1].px)/2, (n[k].py+n[k+1].py)/2);
+            ctx.quadraticCurveTo(n[k].px, n[k].py, (n[k].px+n[k+1].px)/2, (n[k].py+n[k+1].py)/2);
         }
-        ctxD.lineTo(n[n.length-1].px, n[n.length-1].py);
+        ctx.lineTo(n[n.length-1].px, n[n.length-1].py);
     }
-    ctxD.stroke();
-    ctxD.restore();
+    ctx.stroke();
+    ctx.restore();
 }
 
 // ── SON SEGMENT (incremental) ──
 function drawLastSeg(p) {
-    var n = p.nodes, i = n.length - 1;
+    var n = p.nodes, i = n.length-1;
     if (i < 1) return;
-    ctxD.save();
-    ctxD.strokeStyle = p.hue;
-    ctxD.lineWidth   = p.thick;
-    ctxD.lineCap     = 'round';
-    ctxD.lineJoin    = 'round';
-    ctxD.shadowColor = p.hue;
-    ctxD.shadowBlur  = 4;
-    ctxD.beginPath();
+    cInk.save();
+    cInk.strokeStyle = p.hue;
+    cInk.lineWidth   = p.thick;
+    cInk.lineCap     = 'round';
+    cInk.lineJoin    = 'round';
+    cInk.shadowColor = p.hue;
+    cInk.shadowBlur  = 4;
+    cInk.beginPath();
     if (i === 1) {
-        ctxD.moveTo(n[0].px, n[0].py);
-        ctxD.lineTo(n[1].px, n[1].py);
+        cInk.moveTo(n[0].px, n[0].py);
+        cInk.lineTo(n[1].px, n[1].py);
     } else {
         var mx0 = (n[i-2].px+n[i-1].px)/2, my0 = (n[i-2].py+n[i-1].py)/2;
         var mx1 = (n[i-1].px+n[i].px)/2,   my1 = (n[i-1].py+n[i].py)/2;
-        ctxD.moveTo(mx0, my0);
-        ctxD.quadraticCurveTo(n[i-1].px, n[i-1].py, mx1, my1);
+        cInk.moveTo(mx0, my0);
+        cInk.quadraticCurveTo(n[i-1].px, n[i-1].py, mx1, my1);
     }
-    ctxD.stroke();
-    ctxD.restore();
+    cInk.stroke();
+    cInk.restore();
 }
 
 // ── SİLGİ ──
@@ -320,11 +328,11 @@ function wipeNear(px, py) {
     paths = paths.filter(function(p) {
         if (!p.nodes) return true;
         for (var j = 0; j < p.nodes.length; j++) {
-            if (Math.hypot(p.nodes[j].px - px, p.nodes[j].py - py) < ERASE_R) return false;
+            if (Math.hypot(p.nodes[j].px-px, p.nodes[j].py-py) < ERASE_R) return false;
         }
         return true;
     });
-    if (paths.length !== prev) drawDirty = true;
+    if (paths.length !== prev) inkDirty = true;
 }
 
 // ── ANA FRAME ──
@@ -337,84 +345,67 @@ function frame(out) {
 
     ensureSize();
 
-    // Overlay canvas: kamera görüntüsü + karartma
-    // cv-over transform:scaleX(-1) ile aynalı — kamera zaten ön kamera gibi görünür
-    ctxO.drawImage(out.image, 0, 0, cvW, cvH);
-    ctxO.fillStyle = 'rgba(8,12,24,0.76)';
-    ctxO.fillRect(0, 0, cvW, cvH);
+    // --- Katman 1: kamera (cv-bg, aynalı CSS) ---
+    cBg.drawImage(out.image, 0, 0, W, H);
+    cBg.fillStyle = 'rgba(8,12,24,0.76)';
+    cBg.fillRect(0, 0, W, H);
+
+    // --- Katman 3: UI temizle (her frame) ---
+    cUi.clearRect(0, 0, W, H);
 
     var detected   = 0;
     var drawingNow = false;
     var erasingNow = false;
-    var dbgTxt     = '';
+    var dbg        = '';
 
     if (out.multiHandLandmarks && out.multiHandedness) {
         detected = out.multiHandLandmarks.length;
 
-        // MediaPipe el etiketi:
-        // Ön kamera (selfie) modunda etiketler TERSİNE gelir.
-        // Kullanıcının SAĞ eli → MP "Left" olarak işaretler
-        // Kullanıcının SOL eli → MP "Right" olarak işaretler
-        // Bu yüzden: drawHand = "Left" etiketi, ctrlHand = "Right" etiketi
-        //
-        // NOT: Arka kamera kullanılıyorsa bu tersine döner.
-        // Güvenli çözüm: etiket yerine bilek X pozisyonuna göre ayırt et.
-        // Ekranın sol tarafında olan el = kullanıcının SAĞ eli (aynalı görüntüde)
-
-        var hand0 = out.multiHandLandmarks[0] || null;
-        var hand1 = out.multiHandLandmarks[1] || null;
-
-        var drawHand = null;
-        var ctrlHand = null;
+        // El ayırt etme: bilek X pozisyonuna göre
+        // cv-ui scaleX(-1) → yüksek ham x = ekranın sol tarafı = kullanıcının sağ eli
+        var drawHand = null, ctrlHand = null;
 
         if (detected === 1) {
-            // Tek el varsa: her zaman çizim eli
-            drawHand = hand0;
+            drawHand = out.multiHandLandmarks[0];
         } else if (detected >= 2) {
-            // İki el: bilek x konumuna göre ayır
-            // cv-over scaleX(-1) ile aynalı → x=0 ekranın sağı, x=1 ekranın solu
-            // Ekranda SOL tarafta görünen el → x değeri BÜYÜK (raw koordinat)
-            // Kullanıcının SAĞ eli ekranda solda görünür (aynalı)
-            // Yani: bilek x'i daha BÜYÜK olan el = kullanıcının sağ eli = çizim eli
-            var wx0 = hand0[0].x;
-            var wx1 = hand1[0].x;
-            if (wx0 > wx1) {
-                drawHand = hand0;
-                ctrlHand = hand1;
+            var h0 = out.multiHandLandmarks[0];
+            var h1 = out.multiHandLandmarks[1];
+            // Ham x büyük = kamerada sağ = aynalı ekranda sol = kullanıcının sağ eli
+            if (h0[0].x >= h1[0].x) {
+                drawHand = h0; ctrlHand = h1;
             } else {
-                drawHand = hand1;
-                ctrlHand = hand0;
+                drawHand = h1; ctrlHand = h0;
             }
         }
 
-        // ── KONTROL ELİ (sol el) — yatay swipe ──
+        // ── KONTROL ELİ ──
         if (ctrlHand) {
             leftXHist.push(ctrlHand[0].x);
             if (leftXHist.length > 12) leftXHist.shift();
 
             if (leftXHist.length >= 8) {
                 var delta = leftXHist[leftXHist.length-1] - leftXHist[0];
-                var nowMs = Date.now();
-                // canvas aynalı: raw x azalıyor = ekranda sağa kayıyor
-                if (Math.abs(delta) > 0.12 && nowMs - lastSwipeMs > 800) {
+                var nowT  = Date.now();
+                if (Math.abs(delta) > 0.12 && nowT - lastSwipeMs > 800) {
+                    // Ham x azalıyor = el sağa (ekranda sola) kaydı = sağa kaydır → silgi
                     if (delta < -0.12 && !eraserOn) {
-                        eraserOn = true; lastSwipeMs = nowMs; leftXHist = [];
-                        notify('🧹 Silgi modu açıldı'); swipeHint(true);
+                        eraserOn=true; lastSwipeMs=nowT; leftXHist=[];
+                        notify('🧹 Silgi modu'); swipeHint(true);
                         gcCtrl.className='gc actrl'; cdesc.textContent='Sağa kaydırdı';
-                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; }, 1000);
+                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; },1000);
                     } else if (delta > 0.12 && eraserOn) {
-                        eraserOn = false; lastSwipeMs = nowMs; leftXHist = [];
-                        notify('✏️ Kalem modu açıldı'); swipeHint(false);
+                        eraserOn=false; lastSwipeMs=nowT; leftXHist=[];
+                        notify('✏️ Kalem modu'); swipeHint(false);
                         gcCtrl.className='gc actrl'; cdesc.textContent='Sola kaydırdı';
-                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; }, 1000);
+                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; },1000);
                     }
                 }
             }
 
-            // İskelet (overlay canvas — aynalı)
-            drawConnectors(ctxO, ctrlHand, HAND_CONNECTIONS, {color:'rgba(165,214,167,0.2)',lineWidth:1.5});
-            drawLandmarks(ctxO, ctrlHand, {color:'rgba(165,214,167,0.4)',lineWidth:1,radius:2});
-            dbgTxt += 'CTRL x:' + ctrlHand[0].x.toFixed(2) + ' ';
+            // İskelet cv-ui'ye (aynalı) — raw koordinat doğrudan kullanılır
+            drawConnectors(cUi, ctrlHand, HAND_CONNECTIONS, {color:'rgba(165,214,167,0.25)',lineWidth:1.5});
+            drawLandmarks(cUi, ctrlHand, {color:'rgba(165,214,167,0.5)',lineWidth:1,radius:2});
+            dbg += 'CTRL x:'+ctrlHand[0].x.toFixed(2)+'\n';
         } else {
             leftXHist = [];
         }
@@ -423,61 +414,57 @@ function frame(out) {
         if (drawHand) {
             var fist = isFist(drawHand);
 
-            // Overlay canvas aynalı (scaleX -1), bu yüzden iskelet doğrudan çizilir
-            drawConnectors(ctxO, drawHand, HAND_CONNECTIONS, {color:'rgba(79,195,247,0.2)',lineWidth:1.5});
-            drawLandmarks(ctxO, drawHand, {color:'rgba(79,195,247,0.5)',lineWidth:1,radius:2});
+            // İskelet cv-ui'ye (aynalı)
+            drawConnectors(cUi, drawHand, HAND_CONNECTIONS, {color:'rgba(79,195,247,0.25)',lineWidth:1.5});
+            drawLandmarks(cUi, drawHand, {color:'rgba(79,195,247,0.55)',lineWidth:1,radius:2});
 
-            // İmleç için koordinat: draw canvas AYNALANMAMIŞ
-            // raw x'i çevirmemiz gerekiyor: screenX = (1 - raw.x) * cvW
-            var rawLm  = fist ? drawHand[9] : drawHand[8];
-            var screenX = (1 - rawLm.x) * cvW;  // ayna düzeltmesi
-            var screenY = rawLm.y * cvH;
+            // Çizim noktası: cv-ink AYNALANMAMIŞ
+            // → ham x'i tersine çevir: inkX = (1 - rawX) * W
+            var lm   = fist ? drawHand[9] : drawHand[8];
+            var inkX = (1 - lm.x) * W;
+            var inkY = lm.y * H;
 
-            if (curCx === null) { curCx = screenX; curCy = screenY; }
-            else { curCx += (screenX - curCx) * 0.45; curCy += (screenY - curCy) * 0.45; }
+            if (curX === null) { curX = inkX; curY = inkY; }
+            else { curX += (inkX - curX) * 0.45; curY += (inkY - curY) * 0.45; }
 
-            // İmleç draw canvas üzerine çiz (aynasız)
+            // İmleç cv-ink'e çiz (aynasız, kalıcı katman üstünde geçici görünür)
+            // Ama her frame temizlenemez çünkü çizimler orada...
+            // Bunun yerine imleci cv-ui raw koordinatıyla çiziyoruz (aynalı)
+            var uiX = lm.x * W;   // cv-ui aynalı olduğu için raw x kullan
+            var uiY = inkY;
+
             if (fist && !eraserOn) {
-                ctxD.save();
-                ctxD.beginPath();
-                ctxD.arc(curCx, curCy, 10, 0, 6.2832);
-                ctxD.fillStyle = inkColor;
-                ctxD.shadowColor = inkColor;
-                ctxD.shadowBlur = 14;
-                ctxD.fill();
-                ctxD.restore();
+                cUi.save();
+                cUi.beginPath(); cUi.arc(uiX, uiY, 10, 0, 6.2832);
+                cUi.fillStyle = inkColor;
+                cUi.shadowColor = inkColor; cUi.shadowBlur = 14;
+                cUi.fill(); cUi.restore();
                 drawingNow = true;
             } else if (fist && eraserOn) {
-                ctxD.save();
-                ctxD.beginPath();
-                ctxD.arc(curCx, curCy, ERASE_R, 0, 6.2832);
-                ctxD.strokeStyle = 'rgba(244,143,177,0.7)';
-                ctxD.lineWidth = 2;
-                ctxD.stroke();
-                ctxD.restore();
+                cUi.save();
+                cUi.beginPath(); cUi.arc(uiX, uiY, ERASE_R, 0, 6.2832);
+                cUi.strokeStyle = 'rgba(244,143,177,0.7)'; cUi.lineWidth = 2; cUi.stroke();
+                cUi.restore();
                 erasingNow = true;
             } else {
-                ctxD.save();
-                ctxD.beginPath();
-                ctxD.arc(curCx, curCy, 6, 0, 6.2832);
-                ctxD.strokeStyle = 'rgba(79,195,247,0.4)';
-                ctxD.lineWidth = 1.5;
-                ctxD.stroke();
-                ctxD.restore();
+                cUi.save();
+                cUi.beginPath(); cUi.arc(uiX, uiY, 6, 0, 6.2832);
+                cUi.strokeStyle = 'rgba(79,195,247,0.45)'; cUi.lineWidth = 1.5; cUi.stroke();
+                cUi.restore();
             }
 
-            // ── Gerçek çizim/silme ──
+            // ── Gerçek çizim / silme ──
             if (fist) {
                 if (eraserOn) {
-                    wipeNear(curCx, curCy);
+                    wipeNear(curX, curY);
                     activePath = null;
                 } else {
                     if (!activePath) {
-                        activePath = {nodes:[{px:curCx, py:curCy}], hue:inkColor, thick:inkSize};
+                        activePath = {nodes:[{px:curX,py:curY}], hue:inkColor, thick:inkSize};
                         paths.push(activePath);
                         redoPool = [];
                     } else {
-                        activePath.nodes.push({px:curCx, py:curCy});
+                        activePath.nodes.push({px:curX, py:curY});
                         drawLastSeg(activePath);
                     }
                 }
@@ -485,40 +472,31 @@ function frame(out) {
                 activePath = null;
             }
 
-            dbgTxt += 'DRAW fist:' + (fist?'Y':'N') + ' x:' + rawLm.x.toFixed(2);
+            dbg += 'DRAW fist:'+(fist?'✓':'✗')+' x:'+lm.x.toFixed(2)+' inkX:'+Math.round(curX);
         } else {
-            curCx = null; curCy = null; activePath = null;
+            curX = null; curY = null; activePath = null;
+            dbg += 'el yok';
         }
     }
 
-    if (drawDirty) redrawAll();
+    if (inkDirty) redrawAll();
     hudUpdate(detected, drawingNow, erasingNow);
-    dbg.textContent = dbgTxt || '—';
+    dbgEl.textContent = dbg || '—';
 }
 
-// ── KİLAVYE (desktop) ──
+// ── KLAVYE ──
 document.addEventListener('keydown', function(e){
     if(e.key==='+'||e.key==='='){inkSize=Math.min(24,inkSize+1);notify('Fırça: '+inkSize);}
     if(e.key==='-'){inkSize=Math.max(1,inkSize-1);notify('Fırça: '+inkSize);}
-    if(e.ctrlKey&&e.key==='z'){e.preventDefault();if(paths.length){redoPool.push(paths.pop());drawDirty=true;notify('↩ Geri');}}
-    if(e.ctrlKey&&e.key==='y'){e.preventDefault();if(redoPool.length){paths.push(redoPool.pop());drawDirty=true;notify('↪ İleri');}}
-    if(e.code==='Space'){e.preventDefault();paths=[];redoPool=[];drawDirty=true;notify('🗑 Temizlendi');}
+    if(e.ctrlKey&&e.key==='z'){e.preventDefault();if(paths.length){redoPool.push(paths.pop());inkDirty=true;notify('↩ Geri');}}
+    if(e.ctrlKey&&e.key==='y'){e.preventDefault();if(redoPool.length){paths.push(redoPool.pop());inkDirty=true;notify('↪ İleri');}}
+    if(e.code==='Space'){e.preventDefault();paths=[];redoPool=[];inkDirty=true;notify('🗑 Temizlendi');}
 });
 
-// ── PİNÇ — fırça boyutu ──
+// ── PİNÇ ──
 var pinchD0=null, pinchS0=inkSize;
-document.addEventListener('touchstart',function(e){
-    if(e.touches.length===2){
-        pinchD0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-        pinchS0=inkSize;
-    }
-},{passive:true});
-document.addEventListener('touchmove',function(e){
-    if(e.touches.length===2&&pinchD0){
-        var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-        inkSize=Math.max(1,Math.min(24,Math.round(pinchS0*d/pinchD0)));
-    }
-},{passive:true});
+document.addEventListener('touchstart',function(e){if(e.touches.length===2){pinchD0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pinchS0=inkSize;}},{passive:true});
+document.addEventListener('touchmove',function(e){if(e.touches.length===2&&pinchD0){var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);inkSize=Math.max(1,Math.min(24,Math.round(pinchS0*d/pinchD0)));}},{passive:true});
 document.addEventListener('touchend',function(e){if(e.touches.length<2)pinchD0=null;},{passive:true});
 
 // ── MEDİAPİPE ──
@@ -544,14 +522,9 @@ try {
     });
 
     feed.start().catch(function(err){
-        console.error(err);
         document.getElementById('splash-sub').textContent = 'Kamera hatası — tarayıcı iznini kontrol edin.';
-        setTimeout(function(){
-            splash.classList.add('done');
-            setTimeout(function(){ splash.style.display='none'; }, 500);
-        }, 3000);
+        setTimeout(function(){ splash.classList.add('done'); setTimeout(function(){ splash.style.display='none'; },500); },3000);
     });
-
 } catch(e){ console.error(e); }
 </script>
 </body>
