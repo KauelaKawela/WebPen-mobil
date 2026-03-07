@@ -16,15 +16,10 @@
         body{background:var(--bg);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;touch-action:none}
         video{display:none}
 
-        /* 3 katman:
-           1) cv-bg  : kamera görüntüsü + karartma  (aynalı)
-           2) cv-ink : kalıcı çizimler              (normal, koordinat elle çevrilir)
-           3) cv-ui  : imleç + el iskeleti           (aynalı, her frame temizlenir)
-        */
         canvas{position:absolute;inset:0;width:100%;height:100%}
-        #cv-bg {z-index:1;transform:scaleX(-1)}
-        #cv-ink{z-index:2}
-        #cv-ui {z-index:3;transform:scaleX(-1)}
+        #cv-bg {z-index:1;transform:scaleX(-1)}   /* kamera — aynalı */
+        #cv-ink{z-index:2}                         /* çizim — aynasız, koordinat elle çevrilir */
+        #cv-ui {z-index:3;transform:scaleX(-1)}    /* iskelet+imleç — aynalı, her frame temizlenir */
 
         #splash{position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity 0.4s}
         #splash.done{opacity:0;pointer-events:none}
@@ -46,17 +41,17 @@
         #hud-bot{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--panel);border-top:1px solid var(--border);padding:8px 12px 10px;display:flex;flex-direction:column;gap:7px}
         #gcards{display:flex;gap:6px}
         .gc{flex:1;border-radius:9px;padding:7px 8px;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background .2s,border-color .2s}
-        .gc.adraw{background:rgba(79,195,247,0.1);border-color:rgba(79,195,247,0.4)}
+        .gc.adraw {background:rgba(79,195,247,0.1) ;border-color:rgba(79,195,247,0.4)}
         .gc.aerase{background:rgba(244,143,177,0.1);border-color:rgba(244,143,177,0.4)}
-        .gc.actrl{background:rgba(165,214,167,0.1);border-color:rgba(165,214,167,0.4)}
+        .gc.actrl {background:rgba(165,214,167,0.1);border-color:rgba(165,214,167,0.4)}
         .gi{font-size:18px;line-height:1}
         .ginfo{flex:1;min-width:0}
         .gt{font-size:9px;font-weight:700;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .gd{font-size:8px;color:rgba(255,255,255,0.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .gs{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.08);flex-shrink:0;transition:background .2s,box-shadow .2s}
-        .gc.adraw .gs{background:var(--blue);box-shadow:0 0 5px var(--blue)}
+        .gc.adraw  .gs{background:var(--blue);box-shadow:0 0 5px var(--blue)}
         .gc.aerase .gs{background:var(--pink);box-shadow:0 0 5px var(--pink)}
-        .gc.actrl .gs{background:var(--green);box-shadow:0 0 5px var(--green)}
+        .gc.actrl  .gs{background:var(--green);box-shadow:0 0 5px var(--green)}
 
         #crow{display:flex;align-items:center;gap:5px}
         .sw{width:22px;height:22px;border-radius:50%;flex-shrink:0;border:2px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s}
@@ -71,13 +66,7 @@
         @keyframes nfIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes nfOut{to{opacity:0;transform:translateY(-6px)}}
 
-        #ship{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none;opacity:0;transition:opacity .25s;background:rgba(8,12,28,0.92);border:1px solid var(--border);border-radius:12px;padding:14px 24px;display:flex;flex-direction:column;align-items:center;gap:4px}
-        #ship.show{opacity:1}
-        #sarr{font-size:32px;animation:pulse .55s ease infinite alternate}
-        @keyframes pulse{from{opacity:.4}to{opacity:1}}
-        #stxt{font-size:12px;color:var(--green);font-weight:700;letter-spacing:1px}
-
-        #dbg{position:fixed;bottom:110px;left:8px;z-index:10;background:rgba(0,0,0,0.55);color:rgba(255,255,255,0.45);font-size:9px;padding:3px 7px;border-radius:5px;pointer-events:none;line-height:1.7;font-family:monospace}
+        #dbg{position:fixed;bottom:110px;left:8px;z-index:10;background:rgba(0,0,0,0.55);color:rgba(255,255,255,0.5);font-size:9px;padding:3px 8px;border-radius:5px;pointer-events:none;line-height:1.8;font-family:monospace;white-space:pre}
     </style>
 </head>
 <body>
@@ -89,12 +78,8 @@
 </div>
 
 <video id="webcam" autoplay playsinline muted></video>
-
-<!-- Katman 1: kamera arka plan -->
 <canvas id="cv-bg"></canvas>
-<!-- Katman 2: kalıcı çizim -->
 <canvas id="cv-ink"></canvas>
-<!-- Katman 3: geçici UI (iskelet + imleç) -->
 <canvas id="cv-ui"></canvas>
 
 <div id="hud-top">
@@ -108,17 +93,26 @@
     <div id="gcards">
         <div class="gc" id="gc-draw">
             <div class="gi">✊</div>
-            <div class="ginfo"><div class="gt">ÇİZ</div><div class="gd">Sağ el yumruk</div></div>
+            <div class="ginfo">
+                <div class="gt">ÇİZ</div>
+                <div class="gd">Sağ el yumruk</div>
+            </div>
             <div class="gs"></div>
         </div>
         <div class="gc" id="gc-erase">
-            <div class="gi">🖐</div>
-            <div class="ginfo"><div class="gt">SİLGİ</div><div class="gd">Yumruk + silgi mod</div></div>
+            <div class="gi">✊</div>
+            <div class="ginfo">
+                <div class="gt">SİLGİ</div>
+                <div class="gd">Sol el yumruk</div>
+            </div>
             <div class="gs"></div>
         </div>
         <div class="gc" id="gc-ctrl">
-            <div class="gi">👈</div>
-            <div class="ginfo"><div class="gt">KONTROL</div><div class="gd" id="cdesc">Sol el → kaydır</div></div>
+            <div class="gi">🖐</div>
+            <div class="ginfo">
+                <div class="gt">KALEM</div>
+                <div class="gd">Sol el açık</div>
+            </div>
             <div class="gs"></div>
         </div>
     </div>
@@ -140,15 +134,14 @@
 </div>
 
 <div id="notif"></div>
-<div id="ship"><div id="sarr">←</div><div id="stxt">SİLGİ MODU</div></div>
-<div id="dbg">başlatılıyor…</div>
+<div id="dbg">—</div>
 
 <script>
 // ── DOM ──
 var webcam  = document.getElementById('webcam');
-var cvBg    = document.getElementById('cv-bg');    // kamera
-var cvInk   = document.getElementById('cv-ink');   // çizim (kalıcı)
-var cvUi    = document.getElementById('cv-ui');    // iskelet+imleç (geçici)
+var cvBg    = document.getElementById('cv-bg');
+var cvInk   = document.getElementById('cv-ink');
+var cvUi    = document.getElementById('cv-ui');
 var cBg     = cvBg.getContext('2d');
 var cInk    = cvInk.getContext('2d');
 var cUi     = cvUi.getContext('2d');
@@ -162,45 +155,33 @@ var notifEl = document.getElementById('notif');
 var gcDraw  = document.getElementById('gc-draw');
 var gcErase = document.getElementById('gc-erase');
 var gcCtrl  = document.getElementById('gc-ctrl');
-var cdesc   = document.getElementById('cdesc');
-var ship    = document.getElementById('ship');
-var sarr    = document.getElementById('sarr');
-var stxt    = document.getElementById('stxt');
 var dbgEl   = document.getElementById('dbg');
 
 // ── STATE ──
 var paths      = [];
 var activePath = null;
 var redoPool   = [];
-var eraserOn   = false;
+var eraserOn   = false;   // sol el yumruk mu?
 var inkColor   = '#4fc3f7';
 var inkSize    = 5;
 var launched   = false;
-
-// Smoothed cursor (cv-ink koordinat uzayında)
 var curX = null, curY = null;
-
-// Swipe
-var leftXHist   = [];
-var lastSwipeMs = 0;
-var swipeTimer  = null;
-
-// HUD throttle
-var lastHudMs = 0;
-
-// Canvas boyut cache
+var lastHudMs  = 0;
 var W = 0, H = 0;
-var inkDirty = false;  // true → redrawAll çağır
-var ERASE_R  = 40;
+var inkDirty   = false;
+var ERASE_R    = 44;
+
+// Mod değişim debounce (titreme önleme)
+var lastModeChange = 0;
 
 // ── BOYUT ──
 function ensureSize() {
     var w = window.innerWidth, h = window.innerHeight;
     if (w === W && h === H) return;
     W = w; H = h;
-    cvBg.width  = w; cvBg.height  = h;
-    cvInk.width = w; cvInk.height = h;
-    cvUi.width  = w; cvUi.height  = h;
+    cvBg.width=w;  cvBg.height=h;
+    cvInk.width=w; cvInk.height=h;
+    cvUi.width=w;  cvUi.height=h;
     inkDirty = true;
 }
 
@@ -210,15 +191,6 @@ function notify(txt) {
     el.className = 'nm'; el.textContent = txt;
     notifEl.appendChild(el);
     setTimeout(function(){ if(el.parentNode) el.remove(); }, 2000);
-}
-
-// ── SWIPE HİNT ──
-function swipeHint(toEraser) {
-    sarr.textContent = toEraser ? '→' : '←';
-    stxt.textContent = toEraser ? 'SİLGİ MODU' : 'KALEM MODU';
-    ship.classList.add('show');
-    if(swipeTimer) clearTimeout(swipeTimer);
-    swipeTimer = setTimeout(function(){ ship.classList.remove('show'); }, 1200);
 }
 
 // ── RENK ──
@@ -231,7 +203,7 @@ swatches.forEach(function(s){
     s.addEventListener('pointerdown', function(e){ e.preventDefault(); pickColor(s.getAttribute('data-c')); });
 });
 
-// ── HUD (max 10fps) ──
+// ── HUD ──
 function hudUpdate(detected, drawing, erasing) {
     var now = Date.now();
     if (now - lastHudMs < 100) return;
@@ -239,23 +211,37 @@ function hudUpdate(detected, drawing, erasing) {
     hcnt.textContent = detected;
     bval.textContent = inkSize;
     bfill.style.width = ((inkSize-1)/23*100) + '%';
+    gcDraw.className  = 'gc';
+    gcErase.className = 'gc';
+    gcCtrl.className  = 'gc';
     if (!detected) {
-        dot.className='dot'; stlbl.textContent='El bekleniyor…'; stlbl.className='hv';
-        gcDraw.className='gc'; gcErase.className='gc';
+        dot.className = 'dot';
+        stlbl.textContent = 'El bekleniyor…';
+        stlbl.className = 'hv';
     } else if (drawing) {
-        dot.className='dot draw'; stlbl.textContent='✏️ Çiziliyor'; stlbl.className='hv on';
-        gcDraw.className='gc adraw'; gcErase.className='gc';
+        dot.className = 'dot draw';
+        stlbl.textContent = '✏️ Çiziliyor';
+        stlbl.className = 'hv on';
+        gcDraw.className = 'gc adraw';
     } else if (erasing) {
-        dot.className='dot erase'; stlbl.textContent='🧹 Siliniyor'; stlbl.className='hv er';
-        gcDraw.className='gc'; gcErase.className='gc aerase';
+        dot.className = 'dot erase';
+        stlbl.textContent = '🧹 Siliniyor';
+        stlbl.className = 'hv er';
+        gcErase.className = 'gc aerase';
+    } else if (eraserOn) {
+        dot.className = 'dot erase';
+        stlbl.textContent = '🧹 Silgi modu';
+        stlbl.className = 'hv er';
+        gcErase.className = 'gc aerase';
     } else {
-        dot.className='dot'; stlbl.textContent=eraserOn?'🧹 Silgi modu':'✋ Hazır'; stlbl.className='hv';
-        gcDraw.className='gc'; gcErase.className='gc';
+        dot.className = 'dot';
+        stlbl.textContent = '✋ Hazır';
+        stlbl.className = 'hv';
+        gcCtrl.className = 'gc actrl';
     }
 }
 
-// ── YUMRUK ──
-// 4 parmaktan en az 3'ünün ucu PIP ekleminden daha aşağıdaysa yumruk
+// ── YUMRUK: en az 3 parmak kıvrık ──
 function isFist(m) {
     var c = 0;
     if (m[8].y  > m[6].y)  c++;
@@ -265,36 +251,35 @@ function isFist(m) {
     return c >= 3;
 }
 
-// ── ÇİZİM CANVAS'I TAM YENİDEN ÇİZ ──
+// ── TÜM ÇİZİMLERİ YENİDEN ÇİZ ──
 function redrawAll() {
     cInk.clearRect(0, 0, W, H);
-    for (var i = 0; i < paths.length; i++) drawFullPath(cInk, paths[i]);
+    for (var i = 0; i < paths.length; i++) drawFullPath(paths[i]);
     inkDirty = false;
 }
 
-// ── TEK PATH ÇİZ ──
-function drawFullPath(ctx, p) {
+function drawFullPath(p) {
     var n = p.nodes;
     if (!n || n.length < 2) return;
-    ctx.save();
-    ctx.strokeStyle = p.hue;
-    ctx.lineWidth   = p.thick;
-    ctx.lineCap     = 'round';
-    ctx.lineJoin    = 'round';
-    ctx.shadowColor = p.hue;
-    ctx.shadowBlur  = 4;
-    ctx.beginPath();
-    ctx.moveTo(n[0].px, n[0].py);
+    cInk.save();
+    cInk.strokeStyle = p.hue;
+    cInk.lineWidth   = p.thick;
+    cInk.lineCap     = 'round';
+    cInk.lineJoin    = 'round';
+    cInk.shadowColor = p.hue;
+    cInk.shadowBlur  = 4;
+    cInk.beginPath();
+    cInk.moveTo(n[0].px, n[0].py);
     if (n.length === 2) {
-        ctx.lineTo(n[1].px, n[1].py);
+        cInk.lineTo(n[1].px, n[1].py);
     } else {
         for (var k = 1; k < n.length-1; k++) {
-            ctx.quadraticCurveTo(n[k].px, n[k].py, (n[k].px+n[k+1].px)/2, (n[k].py+n[k+1].py)/2);
+            cInk.quadraticCurveTo(n[k].px, n[k].py, (n[k].px+n[k+1].px)/2, (n[k].py+n[k+1].py)/2);
         }
-        ctx.lineTo(n[n.length-1].px, n[n.length-1].py);
+        cInk.lineTo(n[n.length-1].px, n[n.length-1].py);
     }
-    ctx.stroke();
-    ctx.restore();
+    cInk.stroke();
+    cInk.restore();
 }
 
 // ── SON SEGMENT (incremental) ──
@@ -328,7 +313,7 @@ function wipeNear(px, py) {
     paths = paths.filter(function(p) {
         if (!p.nodes) return true;
         for (var j = 0; j < p.nodes.length; j++) {
-            if (Math.hypot(p.nodes[j].px-px, p.nodes[j].py-py) < ERASE_R) return false;
+            if (Math.hypot(p.nodes[j].px - px, p.nodes[j].py - py) < ERASE_R) return false;
         }
         return true;
     });
@@ -345,12 +330,12 @@ function frame(out) {
 
     ensureSize();
 
-    // --- Katman 1: kamera (cv-bg, aynalı CSS) ---
+    // Katman 1: kamera
     cBg.drawImage(out.image, 0, 0, W, H);
     cBg.fillStyle = 'rgba(8,12,24,0.76)';
     cBg.fillRect(0, 0, W, H);
 
-    // --- Katman 3: UI temizle (her frame) ---
+    // Katman 3: UI sıfırla
     cUi.clearRect(0, 0, W, H);
 
     var detected   = 0;
@@ -361,16 +346,16 @@ function frame(out) {
     if (out.multiHandLandmarks && out.multiHandedness) {
         detected = out.multiHandLandmarks.length;
 
-        // El ayırt etme: bilek X pozisyonuna göre
-        // cv-ui scaleX(-1) → yüksek ham x = ekranın sol tarafı = kullanıcının sağ eli
-        var drawHand = null, ctrlHand = null;
+        // El ayırt etme: ham bilek X'e göre
+        // cv-ui/cv-bg scaleX(-1) → ham x yüksek = ekranda sol = kullanıcının SAĞ eli
+        var drawHand = null;  // sağ el (çizim)
+        var ctrlHand = null;  // sol el (silgi kontrolü)
 
         if (detected === 1) {
             drawHand = out.multiHandLandmarks[0];
-        } else if (detected >= 2) {
+        } else {
             var h0 = out.multiHandLandmarks[0];
             var h1 = out.multiHandLandmarks[1];
-            // Ham x büyük = kamerada sağ = aynalı ekranda sol = kullanıcının sağ eli
             if (h0[0].x >= h1[0].x) {
                 drawHand = h0; ctrlHand = h1;
             } else {
@@ -378,89 +363,90 @@ function frame(out) {
             }
         }
 
-        // ── KONTROL ELİ ──
+        // ── SOL EL: yumruk → silgi modu, açık → kalem modu ──
         if (ctrlHand) {
-            leftXHist.push(ctrlHand[0].x);
-            if (leftXHist.length > 12) leftXHist.shift();
+            var ctrlFist = isFist(ctrlHand);
+            var now = Date.now();
 
-            if (leftXHist.length >= 8) {
-                var delta = leftXHist[leftXHist.length-1] - leftXHist[0];
-                var nowT  = Date.now();
-                if (Math.abs(delta) > 0.12 && nowT - lastSwipeMs > 800) {
-                    // Ham x azalıyor = el sağa (ekranda sola) kaydı = sağa kaydır → silgi
-                    if (delta < -0.12 && !eraserOn) {
-                        eraserOn=true; lastSwipeMs=nowT; leftXHist=[];
-                        notify('🧹 Silgi modu'); swipeHint(true);
-                        gcCtrl.className='gc actrl'; cdesc.textContent='Sağa kaydırdı';
-                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; },1000);
-                    } else if (delta > 0.12 && eraserOn) {
-                        eraserOn=false; lastSwipeMs=nowT; leftXHist=[];
-                        notify('✏️ Kalem modu'); swipeHint(false);
-                        gcCtrl.className='gc actrl'; cdesc.textContent='Sola kaydırdı';
-                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; },1000);
-                    }
+            // Debounce: 400ms'de bir mod değişimi
+            if (now - lastModeChange > 400) {
+                if (ctrlFist && !eraserOn) {
+                    eraserOn = true;
+                    lastModeChange = now;
+                    activePath = null;
+                    notify('🧹 Silgi modu');
+                } else if (!ctrlFist && eraserOn) {
+                    eraserOn = false;
+                    lastModeChange = now;
+                    notify('✏️ Kalem modu');
                 }
             }
 
-            // İskelet cv-ui'ye (aynalı) — raw koordinat doğrudan kullanılır
-            drawConnectors(cUi, ctrlHand, HAND_CONNECTIONS, {color:'rgba(165,214,167,0.25)',lineWidth:1.5});
-            drawLandmarks(cUi, ctrlHand, {color:'rgba(165,214,167,0.5)',lineWidth:1,radius:2});
-            dbg += 'CTRL x:'+ctrlHand[0].x.toFixed(2)+'\n';
-        } else {
-            leftXHist = [];
+            // İskelet (yeşil = kontrol eli)
+            drawConnectors(cUi, ctrlHand, HAND_CONNECTIONS, {color: ctrlFist ? 'rgba(244,143,177,0.35)' : 'rgba(165,214,167,0.25)', lineWidth: 1.5});
+            drawLandmarks(cUi, ctrlHand, {color: ctrlFist ? 'rgba(244,143,177,0.6)' : 'rgba(165,214,167,0.5)', lineWidth: 1, radius: 2});
+
+            dbg += 'SOL fist:' + (ctrlFist?'✓':'✗') + ' silgi:' + (eraserOn?'ON':'OFF') + '\n';
         }
 
-        // ── ÇİZİM ELİ ──
+        // ── SAĞ EL: yumruk → çiz/sil ──
         if (drawHand) {
-            var fist = isFist(drawHand);
+            var drawFist = isFist(drawHand);
 
-            // İskelet cv-ui'ye (aynalı)
-            drawConnectors(cUi, drawHand, HAND_CONNECTIONS, {color:'rgba(79,195,247,0.25)',lineWidth:1.5});
-            drawLandmarks(cUi, drawHand, {color:'rgba(79,195,247,0.55)',lineWidth:1,radius:2});
+            // İskelet (mavi = çizim eli)
+            drawConnectors(cUi, drawHand, HAND_CONNECTIONS, {color: 'rgba(79,195,247,0.25)', lineWidth: 1.5});
+            drawLandmarks(cUi, drawHand, {color: 'rgba(79,195,247,0.55)', lineWidth: 1, radius: 2});
 
-            // Çizim noktası: cv-ink AYNALANMAMIŞ
-            // → ham x'i tersine çevir: inkX = (1 - rawX) * W
-            var lm   = fist ? drawHand[9] : drawHand[8];
+            // Çizim noktası: cv-ink aynasız → x ters çevir
+            var lm   = drawFist ? drawHand[9] : drawHand[8];
             var inkX = (1 - lm.x) * W;
             var inkY = lm.y * H;
 
             if (curX === null) { curX = inkX; curY = inkY; }
             else { curX += (inkX - curX) * 0.45; curY += (inkY - curY) * 0.45; }
 
-            // İmleç cv-ink'e çiz (aynasız, kalıcı katman üstünde geçici görünür)
-            // Ama her frame temizlenemez çünkü çizimler orada...
-            // Bunun yerine imleci cv-ui raw koordinatıyla çiziyoruz (aynalı)
-            var uiX = lm.x * W;   // cv-ui aynalı olduğu için raw x kullan
+            // İmleç cv-ui'ye (aynalı → raw x kullan)
+            var uiX = lm.x * W;
             var uiY = inkY;
 
-            if (fist && !eraserOn) {
+            if (drawFist && !eraserOn) {
+                // Çizim imleci
                 cUi.save();
                 cUi.beginPath(); cUi.arc(uiX, uiY, 10, 0, 6.2832);
                 cUi.fillStyle = inkColor;
-                cUi.shadowColor = inkColor; cUi.shadowBlur = 14;
+                cUi.shadowColor = inkColor; cUi.shadowBlur = 16;
                 cUi.fill(); cUi.restore();
                 drawingNow = true;
-            } else if (fist && eraserOn) {
+
+            } else if (drawFist && eraserOn) {
+                // Silgi imleci
                 cUi.save();
                 cUi.beginPath(); cUi.arc(uiX, uiY, ERASE_R, 0, 6.2832);
-                cUi.strokeStyle = 'rgba(244,143,177,0.7)'; cUi.lineWidth = 2; cUi.stroke();
-                cUi.restore();
+                cUi.strokeStyle = 'rgba(244,143,177,0.8)'; cUi.lineWidth = 2.5; cUi.stroke();
+                // X işareti
+                cUi.strokeStyle = 'rgba(244,143,177,0.5)'; cUi.lineWidth = 1.5;
+                cUi.beginPath();
+                cUi.moveTo(uiX-14, uiY-14); cUi.lineTo(uiX+14, uiY+14);
+                cUi.moveTo(uiX+14, uiY-14); cUi.lineTo(uiX-14, uiY+14);
+                cUi.stroke(); cUi.restore();
                 erasingNow = true;
+
             } else {
+                // Boşta imleci
                 cUi.save();
                 cUi.beginPath(); cUi.arc(uiX, uiY, 6, 0, 6.2832);
-                cUi.strokeStyle = 'rgba(79,195,247,0.45)'; cUi.lineWidth = 1.5; cUi.stroke();
+                cUi.strokeStyle = 'rgba(79,195,247,0.4)'; cUi.lineWidth = 1.5; cUi.stroke();
                 cUi.restore();
             }
 
             // ── Gerçek çizim / silme ──
-            if (fist) {
+            if (drawFist) {
                 if (eraserOn) {
                     wipeNear(curX, curY);
                     activePath = null;
                 } else {
                     if (!activePath) {
-                        activePath = {nodes:[{px:curX,py:curY}], hue:inkColor, thick:inkSize};
+                        activePath = {nodes:[{px:curX, py:curY}], hue:inkColor, thick:inkSize};
                         paths.push(activePath);
                         redoPool = [];
                     } else {
@@ -472,10 +458,10 @@ function frame(out) {
                 activePath = null;
             }
 
-            dbg += 'DRAW fist:'+(fist?'✓':'✗')+' x:'+lm.x.toFixed(2)+' inkX:'+Math.round(curX);
+            dbg += 'SAĞ fist:' + (drawFist?'✓':'✗') + ' x:' + lm.x.toFixed(2) + ' inkX:' + Math.round(curX);
         } else {
             curX = null; curY = null; activePath = null;
-            dbg += 'el yok';
+            dbg += 'sağ el yok';
         }
     }
 
