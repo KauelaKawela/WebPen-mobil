@@ -1,848 +1,437 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <title>El Kalemi</title>
+    <title>WebPen Mobil</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#080c18">
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        :root{
+            --blue:#4fc3f7;--pink:#f48fb1;--green:#a5d6a7;
+            --bg:#080c18;--panel:rgba(8,12,28,0.88);--border:rgba(79,195,247,0.15);
+        }
+        body{background:var(--bg);overflow:hidden;font-family:system-ui,-apple-system,sans-serif;touch-action:none}
+        video{display:none}
 
-        :root {
-            --blue: #4fc3f7;
-            --pink: #f48fb1;
-            --green: #a5d6a7;
-            --bg: #080c18;
-            --panel: rgba(8,12,28,0.82);
-            --border: rgba(79,195,247,0.18);
-        }
+        #cv-draw{position:absolute;inset:0;width:100%;height:100%;z-index:1;transform:scaleX(-1)}
+        #cv-over{position:absolute;inset:0;width:100%;height:100%;z-index:2;transform:scaleX(-1)}
 
-        body {
-            background: var(--bg);
-            overflow: hidden;
-            font-family: 'Outfit', sans-serif;
-            touch-action: none;
+        #splash{
+            position:fixed;inset:0;z-index:999;background:var(--bg);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+            transition:opacity 0.4s
         }
+        #splash.done{opacity:0;pointer-events:none}
+        #splash-title{font-size:clamp(18px,5vw,26px);font-weight:700;color:var(--blue);letter-spacing:5px;text-transform:uppercase}
+        #splash-sub{color:rgba(255,255,255,0.35);font-size:13px}
+        .ring{width:44px;height:44px;border:3px solid rgba(79,195,247,0.1);border-top-color:var(--blue);border-radius:50%;animation:spin .85s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
 
-        video { display: none; }
+        #hud-top{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:stretch;height:48px;background:var(--panel);border-bottom:1px solid var(--border)}
+        .hc{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;padding:0 12px;border-right:1px solid rgba(255,255,255,0.04);min-width:0}
+        .hc:last-child{border-right:none}
+        .hc.grow{flex:1}
+        .hl{font-size:7px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.25)}
+        .hv{font-size:11px;font-weight:600;color:rgba(255,255,255,0.8);white-space:nowrap}
+        .hv.on{color:var(--blue)}.hv.er{color:var(--pink)}
+        .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.12);transition:background .2s,box-shadow .2s}
+        .dot.draw{background:var(--blue);box-shadow:0 0 8px var(--blue)}
+        .dot.erase{background:var(--pink);box-shadow:0 0 8px var(--pink)}
 
-        canvas {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            transform: scaleX(-1);
-            z-index: 1;
-        }
+        #hud-bot{position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--panel);border-top:1px solid var(--border);padding:8px 12px 10px;display:flex;flex-direction:column;gap:7px}
+        #gcards{display:flex;gap:6px}
+        .gc{flex:1;border-radius:9px;padding:7px 8px;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);transition:background .2s,border-color .2s}
+        .gc.adraw{background:rgba(79,195,247,0.07);border-color:rgba(79,195,247,0.3)}
+        .gc.aerase{background:rgba(244,143,177,0.07);border-color:rgba(244,143,177,0.3)}
+        .gc.actrl{background:rgba(165,214,167,0.07);border-color:rgba(165,214,167,0.3)}
+        .gi{font-size:18px;line-height:1}
+        .ginfo{flex:1;min-width:0}
+        .gt{font-size:9px;font-weight:700;letter-spacing:.3px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .gd{font-size:8px;color:rgba(255,255,255,0.25);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .gs{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.08);flex-shrink:0;transition:background .2s,box-shadow .2s}
+        .gc.adraw .gs{background:var(--blue);box-shadow:0 0 5px var(--blue)}
+        .gc.aerase .gs{background:var(--pink);box-shadow:0 0 5px var(--pink)}
+        .gc.actrl .gs{background:var(--green);box-shadow:0 0 5px var(--green)}
 
-        /* ── SPLASH ── */
-        #splash {
-            position: fixed; inset: 0; z-index: 999;
-            background: var(--bg);
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 20px;
-            transition: opacity 0.5s;
-        }
-        #splash.done { opacity: 0; pointer-events: none; }
-        #splash-title {
-            font-family: 'Space Mono', monospace;
-            font-size: clamp(20px, 5vw, 28px);
-            color: var(--blue);
-            letter-spacing: 4px;
-        }
-        #splash-sub {
-            color: rgba(255,255,255,0.4);
-            font-size: 13px;
-            font-weight: 300;
-        }
-        .ring {
-            width: 48px; height: 48px;
-            border: 3px solid rgba(79,195,247,0.12);
-            border-top-color: var(--blue);
-            border-radius: 50%;
-            animation: spin 0.9s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        #crow{display:flex;align-items:center;gap:5px}
+        .sw{width:20px;height:20px;border-radius:50%;flex-shrink:0;border:2px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s}
+        .sw.picked{border-color:#fff;transform:scale(1.28);box-shadow:0 0 7px currentColor}
+        #bbar{flex:1;display:flex;align-items:center;gap:6px}
+        #blbl{font-size:8px;color:rgba(255,255,255,0.25);letter-spacing:1px;white-space:nowrap}
+        #btrack{flex:1;height:3px;background:rgba(255,255,255,0.07);border-radius:2px;position:relative}
+        #bfill{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:2px;transition:width .15s}
 
-        /* ── TOP HUD ── */
-        #hud-top {
-            position: fixed; top: 0; left: 0; right: 0;
-            z-index: 10;
-            display: flex; align-items: stretch;
-            background: var(--panel);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            height: 52px;
-        }
+        #notif{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:20;pointer-events:none}
+        .nm{background:rgba(8,12,28,0.92);border:1px solid rgba(79,195,247,0.22);border-radius:7px;padding:5px 14px;color:var(--blue);font-size:11px;font-weight:600;white-space:nowrap;margin-bottom:4px;animation:nfIn .18s ease,nfOut .2s 1.4s forwards}
+        @keyframes nfIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes nfOut{to{opacity:0;transform:translateY(-6px)}}
 
-        .hud-cell {
-            display: flex; align-items: center; justify-content: center;
-            flex-direction: column; gap: 2px;
-            padding: 0 14px;
-            border-right: 1px solid rgba(255,255,255,0.05);
-            min-width: 0;
-        }
-        .hud-cell:last-child { border-right: none; }
-        .hud-cell.grow { flex: 1; }
-
-        .hud-label {
-            font-size: 8px;
-            font-weight: 600;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.3);
-        }
-        .hud-value {
-            font-family: 'Space Mono', monospace;
-            font-size: 11px;
-            color: rgba(255,255,255,0.8);
-            white-space: nowrap;
-        }
-        .hud-value.active { color: var(--blue); }
-        .hud-value.eraser { color: var(--pink); }
-
-        /* mode indicator dot */
-        .mode-dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: var(--blue);
-            box-shadow: 0 0 10px var(--blue);
-            transition: all 0.3s;
-        }
-        .mode-dot.eraser-mode {
-            background: var(--pink);
-            box-shadow: 0 0 10px var(--pink);
-        }
-        .mode-dot.idle { background: rgba(255,255,255,0.15); box-shadow: none; }
-
-        /* ── BOTTOM HUD ── */
-        #hud-bottom {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            z-index: 10;
-            background: var(--panel);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid var(--border);
-            padding: 10px 14px 12px;
-            display: flex; flex-direction: column; gap: 8px;
-        }
-
-        /* gesture cards */
-        #gesture-cards {
-            display: flex; gap: 8px;
-        }
-
-        .g-card {
-            flex: 1;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 10px;
-            padding: 8px 10px;
-            display: flex; align-items: center; gap: 8px;
-            transition: all 0.25s;
-        }
-        .g-card.active-draw {
-            background: rgba(79,195,247,0.08);
-            border-color: rgba(79,195,247,0.35);
-        }
-        .g-card.active-erase {
-            background: rgba(244,143,177,0.08);
-            border-color: rgba(244,143,177,0.35);
-        }
-        .g-card.active-ctrl {
-            background: rgba(165,214,167,0.08);
-            border-color: rgba(165,214,167,0.35);
-        }
-
-        .g-icon {
-            font-size: 20px;
-            line-height: 1;
-            filter: grayscale(0.4);
-            transition: filter 0.25s;
-        }
-        .g-card.active-draw .g-icon,
-        .g-card.active-erase .g-icon,
-        .g-card.active-ctrl .g-icon { filter: grayscale(0); }
-
-        .g-info { flex: 1; min-width: 0; }
-        .g-title {
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            color: rgba(255,255,255,0.7);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .g-desc {
-            font-size: 9px;
-            color: rgba(255,255,255,0.3);
-            margin-top: 1px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .g-status {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: rgba(255,255,255,0.1);
-            flex-shrink: 0;
-            transition: all 0.25s;
-        }
-        .g-card.active-draw .g-status { background: var(--blue); box-shadow: 0 0 6px var(--blue); }
-        .g-card.active-erase .g-status { background: var(--pink); box-shadow: 0 0 6px var(--pink); }
-        .g-card.active-ctrl .g-status { background: var(--green); box-shadow: 0 0 6px var(--green); }
-
-        /* color row */
-        #color-row {
-            display: flex; align-items: center; gap: 6px;
-        }
-
-        .sw {
-            width: 22px; height: 22px; border-radius: 50%;
-            border: 2px solid transparent;
-            cursor: pointer;
-            transition: all 0.15s;
-            flex-shrink: 0;
-        }
-        .sw.picked {
-            border-color: #fff;
-            transform: scale(1.25);
-            box-shadow: 0 0 8px currentColor;
-        }
-
-        #brush-size-bar {
-            flex: 1;
-            display: flex; align-items: center; gap: 6px;
-        }
-        #brush-label {
-            font-size: 9px;
-            color: rgba(255,255,255,0.3);
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-        #brush-track {
-            flex: 1;
-            height: 3px;
-            background: rgba(255,255,255,0.08);
-            border-radius: 2px;
-            position: relative;
-        }
-        #brush-fill {
-            position: absolute; left: 0; top: 0; bottom: 0;
-            background: var(--blue);
-            border-radius: 2px;
-            transition: width 0.2s;
-        }
-
-        /* ── NOTIFICATION ── */
-        #notif {
-            position: fixed;
-            top: 62px; left: 50%;
-            transform: translateX(-50%);
-            z-index: 20;
-            pointer-events: none;
-            display: flex; flex-direction: column; align-items: center; gap: 6px;
-        }
-        .notif-msg {
-            background: rgba(8,12,28,0.9);
-            backdrop-filter: blur(14px);
-            border: 1px solid rgba(79,195,247,0.25);
-            border-radius: 8px;
-            padding: 6px 16px;
-            color: var(--blue);
-            font-size: 12px;
-            font-weight: 500;
-            white-space: nowrap;
-            animation: nfIn 0.2s ease, nfOut 0.25s 1.5s forwards;
-        }
-        @keyframes nfIn { from { opacity:0; transform: translateY(-8px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes nfOut { to { opacity:0; transform: translateY(-8px); } }
-
-        /* ── SWIPE ARROW HINT ── */
-        #swipe-hint {
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%,-50%);
-            z-index: 15;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s;
-            background: rgba(8,12,28,0.85);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 14px 22px;
-            display: flex; flex-direction: column; align-items: center; gap: 6px;
-        }
-        #swipe-hint.show { opacity: 1; }
-        #swipe-arrow {
-            font-size: 32px;
-            animation: pulse 0.6s ease infinite alternate;
-        }
-        @keyframes pulse { from { opacity:0.5; } to { opacity:1; } }
-        #swipe-text {
-            font-size: 12px; color: var(--green);
-            font-weight: 600; letter-spacing: 1px;
-        }
+        #ship{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none;opacity:0;transition:opacity .25s;background:rgba(8,12,28,0.9);border:1px solid var(--border);border-radius:12px;padding:12px 20px;display:flex;flex-direction:column;align-items:center;gap:4px}
+        #ship.show{opacity:1}
+        #sarr{font-size:28px;animation:pulse .55s ease infinite alternate}
+        @keyframes pulse{from{opacity:.4}to{opacity:1}}
+        #stxt{font-size:11px;color:var(--green);font-weight:700;letter-spacing:1px}
     </style>
 </head>
 <body>
 
 <div id="splash">
     <div class="ring"></div>
-    <div id="splash-title">EL KALEMİ</div>
-    <div id="splash-sub" id="splashMsg">Kamera başlatılıyor…</div>
+    <div id="splash-title">WebPen Mobil</div>
+    <div id="splash-sub">Kamera başlatılıyor…</div>
 </div>
 
-<video id="webcam" autoplay playsinline></video>
-<canvas id="surface"></canvas>
+<video id="webcam" autoplay playsinline muted></video>
+<canvas id="cv-draw"></canvas>
+<canvas id="cv-over"></canvas>
 
-<!-- TOP HUD -->
 <div id="hud-top">
-    <div class="hud-cell" style="width:52px">
-        <div class="mode-dot idle" id="modeDot"></div>
-        <div class="hud-label">MOD</div>
-    </div>
-    <div class="hud-cell grow">
-        <div class="hud-label">DURUM</div>
-        <div class="hud-value" id="stateLabel">El bekleniyor…</div>
-    </div>
-    <div class="hud-cell">
-        <div class="hud-label">EL</div>
-        <div class="hud-value" id="handCount">0</div>
-    </div>
-    <div class="hud-cell">
-        <div class="hud-label">FIRÇA</div>
-        <div class="hud-value" id="brushVal">5</div>
-    </div>
+    <div class="hc" style="width:46px"><div class="dot" id="dot"></div><div class="hl">MOD</div></div>
+    <div class="hc grow"><div class="hl">DURUM</div><div class="hv" id="stlbl">El bekleniyor…</div></div>
+    <div class="hc"><div class="hl">EL</div><div class="hv" id="hcnt">0</div></div>
+    <div class="hc"><div class="hl">FIRÇA</div><div class="hv" id="bval">5</div></div>
 </div>
 
-<!-- BOTTOM HUD -->
-<div id="hud-bottom">
-    <div id="gesture-cards">
-        <!-- Draw card -->
-        <div class="g-card" id="card-draw">
-            <div class="g-icon">✊</div>
-            <div class="g-info">
-                <div class="g-title">ÇİZ</div>
-                <div class="g-desc">Sağ el yumruk</div>
-            </div>
-            <div class="g-status"></div>
-        </div>
-        <!-- Eraser card -->
-        <div class="g-card" id="card-erase">
-            <div class="g-icon">🖐</div>
-            <div class="g-info">
-                <div class="g-title">SİLGİ</div>
-                <div class="g-desc">Sağ el açık</div>
-            </div>
-            <div class="g-status"></div>
-        </div>
-        <!-- Control card -->
-        <div class="g-card" id="card-ctrl">
-            <div class="g-icon">👈</div>
-            <div class="g-info">
-                <div class="g-title">KONTROL</div>
-                <div class="g-desc" id="ctrl-desc">Sol el → kaydır</div>
-            </div>
-            <div class="g-status"></div>
-        </div>
+<div id="hud-bot">
+    <div id="gcards">
+        <div class="gc" id="gc-draw"><div class="gi">✊</div><div class="ginfo"><div class="gt">ÇİZ</div><div class="gd">Sağ el yumruk</div></div><div class="gs"></div></div>
+        <div class="gc" id="gc-erase"><div class="gi">🖐</div><div class="ginfo"><div class="gt">SİLGİ</div><div class="gd">Yumruk + silgi mod</div></div><div class="gs"></div></div>
+        <div class="gc" id="gc-ctrl"><div class="gi">👈</div><div class="ginfo"><div class="gt">KONTROL</div><div class="gd" id="cdesc">Sol el → kaydır</div></div><div class="gs"></div></div>
     </div>
-
-    <div id="color-row">
-        <div class="sw picked" data-hex="#4fc3f7" style="background:#4fc3f7"></div>
-        <div class="sw" data-hex="#f48fb1" style="background:#f48fb1"></div>
-        <div class="sw" data-hex="#a5d6a7" style="background:#a5d6a7"></div>
-        <div class="sw" data-hex="#fff176" style="background:#fff176"></div>
-        <div class="sw" data-hex="#ffffff" style="background:#ffffff"></div>
-        <div class="sw" data-hex="#ef9a9a" style="background:#ef9a9a"></div>
-        <div class="sw" data-hex="#ce93d8" style="background:#ce93d8"></div>
-        <div class="sw" data-hex="#80cbc4" style="background:#80cbc4"></div>
-        <div class="sw" data-hex="#ffcc80" style="background:#ffcc80"></div>
-
-        <div id="brush-size-bar">
-            <span id="brush-label">FIRÇA</span>
-            <div id="brush-track"><div id="brush-fill" style="width:20%"></div></div>
-        </div>
+    <div id="crow">
+        <div class="sw picked" data-c="#4fc3f7" style="background:#4fc3f7"></div>
+        <div class="sw" data-c="#f48fb1" style="background:#f48fb1"></div>
+        <div class="sw" data-c="#a5d6a7" style="background:#a5d6a7"></div>
+        <div class="sw" data-c="#fff176" style="background:#fff176"></div>
+        <div class="sw" data-c="#ffffff" style="background:#ffffff"></div>
+        <div class="sw" data-c="#ef9a9a" style="background:#ef9a9a"></div>
+        <div class="sw" data-c="#ce93d8" style="background:#ce93d8"></div>
+        <div class="sw" data-c="#80cbc4" style="background:#80cbc4"></div>
+        <div class="sw" data-c="#ffcc80" style="background:#ffcc80"></div>
+        <div id="bbar"><span id="blbl">FIRÇA</span><div id="btrack"><div id="bfill" style="width:20%"></div></div></div>
     </div>
 </div>
 
 <div id="notif"></div>
-
-<div id="swipe-hint">
-    <div id="swipe-arrow">←</div>
-    <div id="swipe-text">SİLGİ MODU</div>
-</div>
+<div id="ship"><div id="sarr">←</div><div id="stxt">SİLGİ MODU</div></div>
 
 <script>
-// ── DOM ──
-var webcam     = document.getElementById('webcam');
-var surface    = document.getElementById('surface');
-var pen        = surface.getContext('2d');
-var splashEl   = document.getElementById('splash');
-var modeDot    = document.getElementById('modeDot');
-var stateLabel = document.getElementById('stateLabel');
-var handCount  = document.getElementById('handCount');
-var brushVal   = document.getElementById('brushVal');
-var brushFill  = document.getElementById('brush-fill');
-var notifBox   = document.getElementById('notif');
-var cardDraw   = document.getElementById('card-draw');
-var cardErase  = document.getElementById('card-erase');
-var cardCtrl   = document.getElementById('card-ctrl');
-var ctrlDesc   = document.getElementById('ctrl-desc');
-var swipeHint  = document.getElementById('swipe-hint');
-var swipeArrow = document.getElementById('swipe-arrow');
-var swipeText  = document.getElementById('swipe-text');
+var webcam  = document.getElementById('webcam');
+var cvDraw  = document.getElementById('cv-draw');
+var cvOver  = document.getElementById('cv-over');
+var ctxD    = cvDraw.getContext('2d');
+var ctxO    = cvOver.getContext('2d');
+var splash  = document.getElementById('splash');
+var dot     = document.getElementById('dot');
+var stlbl   = document.getElementById('stlbl');
+var hcnt    = document.getElementById('hcnt');
+var bval    = document.getElementById('bval');
+var bfill   = document.getElementById('bfill');
+var notifEl = document.getElementById('notif');
+var gcDraw  = document.getElementById('gc-draw');
+var gcErase = document.getElementById('gc-erase');
+var gcCtrl  = document.getElementById('gc-ctrl');
+var cdesc   = document.getElementById('cdesc');
+var ship    = document.getElementById('ship');
+var sarr    = document.getElementById('sarr');
+var stxt    = document.getElementById('stxt');
 
-// ── STATE ──
-var paths       = [];
-var redoPool    = [];
-var activePath  = null;
-var eraserOn    = false;
-var inkColor    = '#4fc3f7';
-var inkSize     = 5;
-var launched    = false;
+// STATE
+var paths      = [];
+var activePath = null;
+var redoPool   = [];
+var eraserOn   = false;
+var inkColor   = '#4fc3f7';
+var inkSize    = 5;
+var launched   = false;
+var curCx = null, curCy = null;
+var leftXHist   = [];
+var lastSwipeMs = 0;
+var swipeTimer  = null;
+var lastHudMs   = 0;
+var cvW = 0, cvH = 0;
+var drawDirty = false;
+var ERASE_R = 38;
 
-// Cursor smoothing per hand index
-var cursor = [
-    { cx: null, cy: null },
-    { cx: null, cy: null }
-];
-
-// Swipe tracking for left hand (control hand)
-var leftHandHistory = [];   // recent X positions
-var swipeHintTimer  = null;
-var lastSwipeTime   = 0;
-
-// ── BRUSH UI ──
-function updateBrushUI() {
-    brushVal.textContent = inkSize;
-    brushFill.style.width = ((inkSize - 1) / 23 * 100) + '%';
+// Canvas resize (yalnızca gerekince)
+function ensureSize() {
+    var w = window.innerWidth, h = window.innerHeight;
+    if (w === cvW && h === cvH) return;
+    cvW = w; cvH = h;
+    cvDraw.width = w; cvDraw.height = h;
+    cvOver.width = w; cvOver.height = h;
+    drawDirty = true;
 }
 
-// ── NOTIFY ──
+// Notify
 function notify(txt) {
     var el = document.createElement('div');
-    el.className = 'notif-msg';
-    el.textContent = txt;
-    notifBox.appendChild(el);
-    setTimeout(function() { if (el.parentNode) el.remove(); }, 1900);
+    el.className = 'nm'; el.textContent = txt;
+    notifEl.appendChild(el);
+    setTimeout(function(){ if(el.parentNode) el.remove(); }, 1800);
 }
 
-// ── COLOR SWATCHES ──
-var swatches = document.querySelectorAll('.sw');
-function pickColor(hex) {
-    inkColor = hex;
-    swatches.forEach(function(s) {
-        if (s.getAttribute('data-hex') === hex) s.classList.add('picked');
-        else s.classList.remove('picked');
-    });
+// Swipe hint
+function swipeHint(toEraser) {
+    sarr.textContent = toEraser ? '→' : '←';
+    stxt.textContent = toEraser ? 'SİLGİ MODU' : 'KALEM MODU';
+    ship.classList.add('show');
+    if(swipeTimer) clearTimeout(swipeTimer);
+    swipeTimer = setTimeout(function(){ ship.classList.remove('show'); }, 1100);
 }
-swatches.forEach(function(s) {
-    s.addEventListener('click', function() { pickColor(this.getAttribute('data-hex')); });
-    s.addEventListener('touchend', function(e) { e.preventDefault(); pickColor(this.getAttribute('data-hex')); });
+
+// Color swatches
+var swatches = document.querySelectorAll('.sw');
+function pickColor(c) {
+    inkColor = c;
+    swatches.forEach(function(s){ s.classList.toggle('picked', s.getAttribute('data-c') === c); });
+}
+swatches.forEach(function(s){
+    s.addEventListener('pointerdown', function(e){ e.preventDefault(); pickColor(s.getAttribute('data-c')); });
 });
 
-// ── HUD UPDATE ──
-function setMode(drawing, erasing, handDetected) {
-    // Update dot
-    if (!handDetected) {
-        modeDot.className = 'mode-dot idle';
-        stateLabel.textContent = 'El bekleniyor…';
-        stateLabel.className = 'hud-value';
-        cardDraw.className  = 'g-card';
-        cardErase.className = 'g-card';
-        return;
-    }
-    if (erasing) {
-        modeDot.className = 'mode-dot eraser-mode';
-        stateLabel.textContent = '🧹 Silgi aktif';
-        stateLabel.className = 'hud-value eraser';
-        cardDraw.className  = 'g-card';
-        cardErase.className = 'g-card active-erase';
+// HUD — max 10fps DOM güncelle
+function hudUpdate(detected, drawing, erasing) {
+    var now = Date.now();
+    if (now - lastHudMs < 100) return;
+    lastHudMs = now;
+    hcnt.textContent = detected;
+    bval.textContent = inkSize;
+    bfill.style.width = ((inkSize-1)/23*100) + '%';
+    if (!detected) {
+        dot.className='dot'; stlbl.textContent='El bekleniyor…'; stlbl.className='hv';
+        gcDraw.className='gc'; gcErase.className='gc';
     } else if (drawing) {
-        modeDot.className = 'mode-dot';
-        stateLabel.textContent = '✏️ Çiziliyor';
-        stateLabel.className = 'hud-value active';
-        cardDraw.className  = 'g-card active-draw';
-        cardErase.className = 'g-card';
+        dot.className='dot draw'; stlbl.textContent='✏️ Çiziliyor'; stlbl.className='hv on';
+        gcDraw.className='gc adraw'; gcErase.className='gc';
+    } else if (erasing) {
+        dot.className='dot erase'; stlbl.textContent='🧹 Siliniyor'; stlbl.className='hv er';
+        gcDraw.className='gc'; gcErase.className='gc aerase';
     } else {
-        modeDot.className = 'mode-dot idle';
-        stateLabel.textContent = eraserOn ? '🧹 Silgi modu' : '✋ Hazır';
-        stateLabel.className = 'hud-value';
-        cardDraw.className  = 'g-card';
-        cardErase.className = 'g-card';
+        dot.className='dot'; stlbl.textContent=eraserOn?'🧹 Silgi modu':'✋ Hazır'; stlbl.className='hv';
+        gcDraw.className='gc'; gcErase.className='gc';
     }
 }
 
-// ── SWIPE HINT ──
-function showSwipeHint(toEraser) {
-    swipeArrow.textContent = toEraser ? '→' : '←';
-    swipeText.textContent  = toEraser ? 'SİLGİ MODU' : 'KALEM MODU';
-    swipeHint.classList.add('show');
-    if (swipeHintTimer) clearTimeout(swipeHintTimer);
-    swipeHintTimer = setTimeout(function() { swipeHint.classList.remove('show'); }, 1200);
+// Yumruk tespiti — sade, hızlı
+function isFist(m) {
+    return (m[8].y > m[6].y) && (m[12].y > m[10].y) && (m[16].y > m[14].y) && (m[20].y > m[18].y);
 }
 
-// ── FIST DETECTION ──
-// Returns true if hand is making a fist (all fingers curled)
-function isFist(marks) {
-    // Compare fingertip Y positions to their PIP joints
-    // For a fist, fingertips are below (higher Y value) than MCP
-    var fingers = [
-        { tip: 8,  pip: 6  },   // index
-        { tip: 12, pip: 10 },   // middle
-        { tip: 16, pip: 14 },   // ring
-        { tip: 20, pip: 18 }    // pinky
-    ];
-    var curled = 0;
-    fingers.forEach(function(f) {
-        // tip is closer to wrist than pip → curled
-        if (marks[f.tip].y > marks[f.pip].y) curled++;
-    });
-    // Also check thumb: tip x closer to palm center
-    var thumbCurled = Math.abs(marks[4].x - marks[9].x) < Math.abs(marks[3].x - marks[9].x) + 0.04;
-    return curled >= 3;
+// Tüm pathleri yeniden çiz (wipe sonrası)
+function redrawAll() {
+    ctxD.clearRect(0, 0, cvW, cvH);
+    for (var i = 0; i < paths.length; i++) renderPath(paths[i]);
+    drawDirty = false;
 }
 
-// ── OPEN HAND DETECTION ──
-function isOpenHand(marks) {
-    var fingers = [
-        { tip: 8,  pip: 6  },
-        { tip: 12, pip: 10 },
-        { tip: 16, pip: 14 },
-        { tip: 20, pip: 18 }
-    ];
-    var extended = 0;
-    fingers.forEach(function(f) {
-        if (marks[f.tip].y < marks[f.pip].y) extended++;
-    });
-    return extended >= 3;
-}
-
-// ── PATH RENDER ──
+// Tek path çiz
 function renderPath(p) {
-    if (!p.nodes || p.nodes.length < 2) return;
     var n = p.nodes;
-    pen.beginPath();
-    pen.moveTo(n[0].px, n[0].py);
+    if (!n || n.length < 2) return;
+    ctxD.beginPath();
+    ctxD.moveTo(n[0].px, n[0].py);
     if (n.length === 2) {
-        pen.lineTo(n[1].px, n[1].py);
+        ctxD.lineTo(n[1].px, n[1].py);
     } else {
-        for (var k = 1; k < n.length - 1; k++) {
-            var mx = (n[k].px + n[k+1].px) / 2;
-            var my = (n[k].py + n[k+1].py) / 2;
-            pen.quadraticCurveTo(n[k].px, n[k].py, mx, my);
+        for (var k = 1; k < n.length-1; k++) {
+            ctxD.quadraticCurveTo(n[k].px, n[k].py, (n[k].px+n[k+1].px)/2, (n[k].py+n[k+1].py)/2);
         }
-        pen.lineTo(n[n.length-1].px, n[n.length-1].py);
+        ctxD.lineTo(n[n.length-1].px, n[n.length-1].py);
     }
-    pen.shadowColor  = p.hue;
-    pen.shadowBlur   = 20;
-    pen.strokeStyle  = p.hue;
-    pen.lineWidth    = p.thickness;
-    pen.lineCap      = 'round';
-    pen.lineJoin     = 'round';
-    pen.globalAlpha  = 0.3;
-    pen.stroke();
-    pen.shadowBlur   = 0;
-    pen.globalAlpha  = 1;
-    pen.lineWidth    = p.thickness * 0.55;
-    pen.stroke();
+    ctxD.strokeStyle = p.hue;
+    ctxD.lineWidth   = p.thick;
+    ctxD.lineCap     = 'round';
+    ctxD.lineJoin    = 'round';
+    ctxD.shadowColor = p.hue;
+    ctxD.shadowBlur  = 5;
+    ctxD.globalAlpha = 1;
+    ctxD.stroke();
+    ctxD.shadowBlur  = 0;
 }
 
-// ── ERASE ──
+// Sadece son segment çiz (incremental — çok hızlı)
+function drawLastSeg(p) {
+    var n = p.nodes, i = n.length-1;
+    if (i < 1) return;
+    ctxD.beginPath();
+    if (i === 1) {
+        ctxD.moveTo(n[0].px, n[0].py);
+        ctxD.lineTo(n[1].px, n[1].py);
+    } else {
+        var mx0 = (n[i-2].px+n[i-1].px)/2, my0 = (n[i-2].py+n[i-1].py)/2;
+        var mx1 = (n[i-1].px+n[i].px)/2,   my1 = (n[i-1].py+n[i].py)/2;
+        ctxD.moveTo(mx0, my0);
+        ctxD.quadraticCurveTo(n[i-1].px, n[i-1].py, mx1, my1);
+    }
+    ctxD.strokeStyle = p.hue;
+    ctxD.lineWidth   = p.thick;
+    ctxD.lineCap     = 'round';
+    ctxD.lineJoin    = 'round';
+    ctxD.shadowColor = p.hue;
+    ctxD.shadowBlur  = 5;
+    ctxD.stroke();
+    ctxD.shadowBlur  = 0;
+}
+
+// Silgi
 function wipeNear(px, py) {
-    var range = 40;
+    var prev = paths.length;
     paths = paths.filter(function(p) {
         if (!p.nodes) return true;
-        return !p.nodes.some(function(nd) {
-            return Math.hypot(nd.px - px, nd.py - py) < range;
-        });
+        for (var j = 0; j < p.nodes.length; j++) {
+            if (Math.hypot(p.nodes[j].px-px, p.nodes[j].py-py) < ERASE_R) return false;
+        }
+        return true;
     });
+    if (paths.length !== prev) drawDirty = true;
 }
 
-// ── MAIN FRAME ──
-function frame(output) {
+// ANA FRAME
+function frame(out) {
     if (!launched) {
         launched = true;
-        splashEl.classList.add('done');
-        setTimeout(function() { splashEl.style.display = 'none'; }, 500);
+        splash.classList.add('done');
+        setTimeout(function(){ splash.style.display='none'; }, 500);
     }
 
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
-    surface.width  = vw;
-    surface.height = vh;
+    ensureSize();
 
-    // Background with camera overlay
-    pen.drawImage(output.image, 0, 0, vw, vh);
-    pen.fillStyle = 'rgba(8,12,24,0.78)';
-    pen.fillRect(0, 0, vw, vh);
+    // Overlay: kamera + karartma
+    ctxO.drawImage(out.image, 0, 0, cvW, cvH);
+    ctxO.fillStyle = 'rgba(8,12,24,0.78)';
+    ctxO.fillRect(0, 0, cvW, cvH);
 
-    // Render all paths
-    pen.save();
-    paths.forEach(renderPath);
-    pen.restore();
+    var detected=0, drawingNow=false, erasingNow=false;
 
-    var detected = 0;
-    var drawingNow  = false;
-    var erasingNow  = false;
-    var leftHandSeen = false;
+    if (out.multiHandLandmarks && out.multiHandedness) {
+        detected = out.multiHandLandmarks.length;
+        var drawHand=null, ctrlHand=null;
 
-    if (output.multiHandLandmarks && output.multiHandedness) {
-        detected = output.multiHandLandmarks.length;
-
-        // Map hands: MediaPipe labels are mirrored because of selfie view
-        // "Right" in MP = user's Left hand (in mirror), "Left" = user's Right
-        // We use index finger tip (landmark 8) for both hands
-        // Drawing hand = user's RIGHT hand (MP label: Left)
-        // Control hand = user's LEFT hand (MP label: Right)
-
-        var drawHand = null;  // user's right
-        var ctrlHand = null;  // user's left
-
-        for (var hi = 0; hi < output.multiHandLandmarks.length; hi++) {
-            var mpLabel = output.multiHandedness[hi].label;
-            if (mpLabel === 'Left') drawHand = { marks: output.multiHandLandmarks[hi], idx: hi };
-            if (mpLabel === 'Right') ctrlHand = { marks: output.multiHandLandmarks[hi], idx: hi };
+        for (var hi=0; hi<detected; hi++) {
+            var lbl = out.multiHandedness[hi].label;
+            if (lbl==='Left')  drawHand = out.multiHandLandmarks[hi];
+            if (lbl==='Right') ctrlHand = out.multiHandLandmarks[hi];
         }
 
-        // ── CONTROL HAND (left) – swipe to toggle eraser ──
+        // KONTROL ELİ — swipe algıla
         if (ctrlHand) {
-            leftHandSeen = true;
-            var wrist = ctrlHand.marks[0];
-            leftHandHistory.push(wrist.x);
-            if (leftHandHistory.length > 12) leftHandHistory.shift();
-
-            if (leftHandHistory.length >= 8) {
-                var oldest = leftHandHistory[0];
-                var newest = leftHandHistory[leftHandHistory.length - 1];
-                var delta  = newest - oldest;
-                var now    = Date.now();
-
-                // Because canvas is mirrored: moving right visually = decreasing x in raw
-                // swipe RIGHT visually → delta negative → switch to ERASER
-                // swipe LEFT  visually → delta positive → switch to PEN
-                if (Math.abs(delta) > 0.12 && (now - lastSwipeTime) > 800) {
-                    if (delta < -0.12 && !eraserOn) {
-                        eraserOn = true;
-                        lastSwipeTime = now;
-                        leftHandHistory = [];
-                        notify('🧹 Silgi modu açıldı');
-                        showSwipeHint(true);
-                        cardCtrl.className = 'g-card active-ctrl';
-                        ctrlDesc.textContent = 'Sağa kaydırdı';
-                        setTimeout(function() {
-                            cardCtrl.className = 'g-card';
-                            ctrlDesc.textContent = 'Sol el → kaydır';
-                        }, 1000);
-                    } else if (delta > 0.12 && eraserOn) {
-                        eraserOn = false;
-                        lastSwipeTime = now;
-                        leftHandHistory = [];
-                        notify('✏️ Kalem modu açıldı');
-                        showSwipeHint(false);
-                        cardCtrl.className = 'g-card active-ctrl';
-                        ctrlDesc.textContent = 'Sola kaydırdı';
-                        setTimeout(function() {
-                            cardCtrl.className = 'g-card';
-                            ctrlDesc.textContent = 'Sol el → kaydır';
-                        }, 1000);
+            leftXHist.push(ctrlHand[0].x);
+            if (leftXHist.length > 10) leftXHist.shift();
+            if (leftXHist.length >= 8) {
+                var delta = leftXHist[leftXHist.length-1] - leftXHist[0];
+                var now   = Date.now();
+                if (Math.abs(delta) > 0.13 && now-lastSwipeMs > 750) {
+                    if (delta < -0.13 && !eraserOn) {
+                        eraserOn=true; lastSwipeMs=now; leftXHist=[];
+                        notify('🧹 Silgi modu'); swipeHint(true);
+                        gcCtrl.className='gc actrl'; cdesc.textContent='Sağa kaydırdı';
+                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; }, 900);
+                    } else if (delta > 0.13 && eraserOn) {
+                        eraserOn=false; lastSwipeMs=now; leftXHist=[];
+                        notify('✏️ Kalem modu'); swipeHint(false);
+                        gcCtrl.className='gc actrl'; cdesc.textContent='Sola kaydırdı';
+                        setTimeout(function(){ gcCtrl.className='gc'; cdesc.textContent='Sol el → kaydır'; }, 900);
                     }
                 }
             }
+            // Hafif iskelet
+            drawConnectors(ctxO, ctrlHand, HAND_CONNECTIONS, {color:'rgba(165,214,167,0.15)',lineWidth:1});
+        } else { leftXHist=[]; }
 
-            // Draw control hand skeleton (green tint)
-            drawConnectors(pen, ctrlHand.marks, HAND_CONNECTIONS, { color: 'rgba(165,214,167,0.2)', lineWidth: 1.5 });
-            drawLandmarks(pen, ctrlHand.marks, { color: 'rgba(165,214,167,0.5)', lineWidth: 1, radius: 2 });
-
-            // Show wrist position label
-            var wx = ctrlHand.marks[0].x * vw;
-            var wy = ctrlHand.marks[0].y * vh;
-            pen.fillStyle = 'rgba(165,214,167,0.7)';
-            pen.font = '10px Outfit';
-            pen.textAlign = 'center';
-            pen.fillText('KONTROL', wx, wy - 18);
-        } else {
-            leftHandHistory = [];
-        }
-
-        // ── DRAW HAND (right) – fist = draw, open = eraser cursor, neither = idle ──
+        // ÇİZİM ELİ
         if (drawHand) {
-            var marks = drawHand.marks;
-            var fist = isFist(marks);
-            var open = isOpenHand(marks);
+            var fist = isFist(drawHand);
+            var rawX = (fist ? drawHand[9].x : drawHand[8].x) * cvW;
+            var rawY = (fist ? drawHand[9].y : drawHand[8].y) * cvH;
 
-            // Index fingertip for cursor
-            var tipX = marks[8].x * vw;
-            var tipY = marks[8].y * vh;
+            if (curCx===null) { curCx=rawX; curCy=rawY; }
+            else { curCx+=(rawX-curCx)*0.4; curCy+=(rawY-curCy)*0.4; }
 
-            // Palm center for fist pivot
-            var palmX = marks[9].x * vw;
-            var palmY = marks[9].y * vh;
+            drawConnectors(ctxO, drawHand, HAND_CONNECTIONS, {color:'rgba(79,195,247,0.15)',lineWidth:1});
 
-            // Use palm center when fist, fingertip otherwise
-            var useX = fist ? palmX : tipX;
-            var useY = fist ? palmY : tipY;
-
-            // Smooth cursor
-            var cs = cursor[0];
-            if (cs.cx === null) { cs.cx = useX; cs.cy = useY; }
-            else {
-                cs.cx += (useX - cs.cx) * 0.38;
-                cs.cy += (useY - cs.cy) * 0.38;
-            }
-
-            // Draw skeleton (blue tint)
-            drawConnectors(pen, marks, HAND_CONNECTIONS, { color: 'rgba(79,195,247,0.2)', lineWidth: 1.5 });
-            drawLandmarks(pen, marks, { color: 'rgba(79,195,247,0.5)', lineWidth: 1, radius: 2 });
-
-            // Cursor visualization
             if (fist && !eraserOn) {
-                // Drawing – glowing filled circle
-                pen.beginPath();
-                pen.arc(cs.cx, cs.cy, 10, 0, Math.PI * 2);
-                pen.fillStyle = inkColor;
-                pen.shadowColor = inkColor;
-                pen.shadowBlur  = 22;
-                pen.fill();
-                pen.shadowBlur  = 0;
-                drawingNow = true;
+                ctxO.beginPath(); ctxO.arc(curCx,curCy,9,0,6.2832);
+                ctxO.fillStyle=inkColor; ctxO.shadowColor=inkColor; ctxO.shadowBlur=12;
+                ctxO.fill(); ctxO.shadowBlur=0;
+                drawingNow=true;
             } else if (fist && eraserOn) {
-                // Erasing – pink crosshair
-                var er = 18;
-                pen.beginPath();
-                pen.arc(cs.cx, cs.cy, er, 0, Math.PI * 2);
-                pen.strokeStyle = 'rgba(244,143,177,0.7)';
-                pen.lineWidth = 2;
-                pen.stroke();
-                pen.beginPath();
-                pen.moveTo(cs.cx - er, cs.cy); pen.lineTo(cs.cx + er, cs.cy);
-                pen.moveTo(cs.cx, cs.cy - er); pen.lineTo(cs.cx, cs.cy + er);
-                pen.strokeStyle = 'rgba(244,143,177,0.5)';
-                pen.lineWidth = 1;
-                pen.stroke();
-                erasingNow = true;
-            } else if (open) {
-                // Open hand – idle ring
-                pen.beginPath();
-                pen.arc(cs.cx, cs.cy, 6, 0, Math.PI * 2);
-                pen.strokeStyle = 'rgba(79,195,247,0.4)';
-                pen.lineWidth = 1.5;
-                pen.stroke();
+                ctxO.beginPath(); ctxO.arc(curCx,curCy,ERASE_R,0,6.2832);
+                ctxO.strokeStyle='rgba(244,143,177,0.6)'; ctxO.lineWidth=2; ctxO.stroke();
+                erasingNow=true;
+            } else {
+                ctxO.beginPath(); ctxO.arc(curCx,curCy,5,0,6.2832);
+                ctxO.strokeStyle='rgba(79,195,247,0.35)'; ctxO.lineWidth=1.5; ctxO.stroke();
             }
 
-            // Hand label
-            pen.fillStyle = 'rgba(79,195,247,0.7)';
-            pen.font = '10px Outfit';
-            pen.textAlign = 'center';
-            var lblY = marks[0].y * vh - 18;
-            pen.fillText('ÇİZİM', marks[0].x * vw, lblY);
-
-            // ── Actually draw or erase ──
             if (fist) {
                 if (eraserOn) {
-                    wipeNear(cs.cx, cs.cy);
-                    activePath = null;
+                    wipeNear(curCx, curCy); activePath=null;
                 } else {
                     if (!activePath) {
-                        activePath = { nodes: [{px: cs.cx, py: cs.cy}], hue: inkColor, thickness: inkSize };
-                        paths.push(activePath);
-                        redoPool = [];
+                        activePath={nodes:[{px:curCx,py:curCy}],hue:inkColor,thick:inkSize};
+                        paths.push(activePath); redoPool=[];
                     } else {
-                        activePath.nodes.push({px: cs.cx, py: cs.cy});
+                        activePath.nodes.push({px:curCx,py:curCy});
+                        drawLastSeg(activePath); // incremental — sadece son segment
                     }
                 }
-            } else {
-                activePath = null;
-            }
-        } else {
-            cursor[0] = { cx: null, cy: null };
-            activePath = null;
-        }
+            } else { activePath=null; }
+        } else { curCx=null; curCy=null; activePath=null; }
     }
 
-    handCount.textContent = detected;
-    setMode(drawingNow, erasingNow, detected > 0);
-    updateBrushUI();
+    if (drawDirty) redrawAll();
+    hudUpdate(detected, drawingNow, erasingNow);
 }
 
-// ── KEYBOARD (bonus for desktop) ──
-document.addEventListener('keydown', function(e) {
-    if (e.key === '+' || e.key === '=') { inkSize = Math.min(24, inkSize + 1); notify('Fırça: ' + inkSize); }
-    if (e.key === '-') { inkSize = Math.max(1, inkSize - 1); notify('Fırça: ' + inkSize); }
-    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); if (paths.length) { redoPool.push(paths.pop()); notify('↩ Geri al'); } }
-    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); if (redoPool.length) { paths.push(redoPool.pop()); notify('↪ İleri al'); } }
-    if (e.code === 'Space') { e.preventDefault(); paths = []; redoPool = []; notify('🗑 Temizlendi'); }
+// Keyboard (desktop)
+document.addEventListener('keydown', function(e){
+    if(e.key==='+'||e.key==='='){inkSize=Math.min(24,inkSize+1);notify('Fırça: '+inkSize);}
+    if(e.key==='-'){inkSize=Math.max(1,inkSize-1);notify('Fırça: '+inkSize);}
+    if(e.ctrlKey&&e.key==='z'){e.preventDefault();if(paths.length){redoPool.push(paths.pop());drawDirty=true;notify('↩ Geri');}}
+    if(e.ctrlKey&&e.key==='y'){e.preventDefault();if(redoPool.length){paths.push(redoPool.pop());drawDirty=true;notify('↪ İleri');}}
+    if(e.code==='Space'){e.preventDefault();paths=[];redoPool=[];drawDirty=true;notify('🗑 Temizlendi');}
 });
 
-// ── PINCH-TO-BRUSH on mobile (two-finger pinch changes brush size) ──
-var initPinchDist = null;
-var initSize = inkSize;
-document.addEventListener('touchstart', function(e) {
-    if (e.touches.length === 2) {
-        var dx = e.touches[0].clientX - e.touches[1].clientX;
-        var dy = e.touches[0].clientY - e.touches[1].clientY;
-        initPinchDist = Math.hypot(dx, dy);
-        initSize = inkSize;
-    }
-}, { passive: true });
-document.addEventListener('touchmove', function(e) {
-    if (e.touches.length === 2 && initPinchDist) {
-        var dx = e.touches[0].clientX - e.touches[1].clientX;
-        var dy = e.touches[0].clientY - e.touches[1].clientY;
-        var d  = Math.hypot(dx, dy);
-        var ratio = d / initPinchDist;
-        inkSize = Math.max(1, Math.min(24, Math.round(initSize * ratio)));
-    }
-}, { passive: true });
-document.addEventListener('touchend', function(e) {
-    if (e.touches.length < 2) initPinchDist = null;
-}, { passive: true });
+// Pinch — fırça boyutu
+var pinchD0=null, pinchS0=inkSize;
+document.addEventListener('touchstart',function(e){if(e.touches.length===2){pinchD0=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);pinchS0=inkSize;}},{passive:true});
+document.addEventListener('touchmove',function(e){if(e.touches.length===2&&pinchD0){var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);inkSize=Math.max(1,Math.min(24,Math.round(pinchS0*d/pinchD0)));}},{passive:true});
+document.addEventListener('touchend',function(e){if(e.touches.length<2)pinchD0=null;},{passive:true});
 
-// ── MEDIAPIPE INIT ──
+// MediaPipe
 try {
     var tracker = new Hands({
-        locateFile: function(f) { return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + f; }
+        locateFile: function(f){ return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/'+f; }
     });
-
     tracker.setOptions({
         maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.68,
-        minTrackingConfidence: 0.58
+        modelComplexity: 0,           // LITE model — mobilde %40+ daha hızlı
+        minDetectionConfidence: 0.65,
+        minTrackingConfidence: 0.55
     });
-
     tracker.onResults(frame);
 
     var feed = new Camera(webcam, {
-        onFrame: async function() {
-            try { await tracker.send({ image: webcam }); }
-            catch(err) { console.warn(err); }
+        onFrame: async function(){
+            try { await tracker.send({image:webcam}); } catch(e){ console.warn(e); }
         },
-        width: 640,
-        height: 480
+        width: 480,    // 640→480: işlemci yükü önemli ölçüde azalır
+        height: 360
     });
 
-    feed.start().then(function() {
-        console.log('Kamera hazır');
-    }).catch(function(e) {
-        document.getElementById('splash-sub').textContent = 'Kamera hatası! İzinleri kontrol edin.';
-        setTimeout(function() {
-            splashEl.classList.add('done');
-            setTimeout(function() { splashEl.style.display = 'none'; }, 500);
-        }, 2500);
+    feed.start().catch(function(){
+        document.getElementById('splash-sub').textContent='Kamera hatası — izinleri kontrol edin.';
+        setTimeout(function(){ splash.classList.add('done'); setTimeout(function(){ splash.style.display='none'; },500); },2500);
     });
-
-} catch(e) {
-    console.error(e);
-}
+} catch(e){ console.error(e); }
 </script>
 </body>
 </html>
+
